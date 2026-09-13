@@ -5,7 +5,7 @@ description: Design or revise buildable brick models from a text brief or refere
 
 # Brick Models
 
-Create an editable brick assembly, not an image that merely resembles bricks. Work in the user's output directory. All paths below are relative to this skill directory; resolve them before running commands.
+Create an editable brick assembly, not an image that merely resembles bricks. Work in the user's output directory, outside this skill folder and its source repository. Keep development exports separate from application/website repositories as well. All script paths below are relative to this skill directory; resolve them before running commands.
 
 ## Start
 
