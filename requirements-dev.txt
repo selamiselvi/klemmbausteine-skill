@@ -1,0 +1,2 @@
+-r skills/brick-models/requirements.txt
+PyYAML>=6,<7

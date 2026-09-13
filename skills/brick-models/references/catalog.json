@@ -1,0 +1,138 @@
+{
+  "version": "1.0",
+  "parts": {
+    "3001": {
+      "name": "Brick 2 x 4",
+      "width": 4,
+      "depth": 2,
+      "height": 3,
+      "source": "https://library.ldraw.org/library/official/parts/3001.dat"
+    },
+    "3002": {
+      "name": "Brick 2 x 3",
+      "width": 3,
+      "depth": 2,
+      "height": 3,
+      "source": "https://library.ldraw.org/library/official/parts/3002.dat"
+    },
+    "3003": {
+      "name": "Brick 2 x 2",
+      "width": 2,
+      "depth": 2,
+      "height": 3,
+      "source": "https://library.ldraw.org/library/official/parts/3003.dat"
+    },
+    "3004": {
+      "name": "Brick 1 x 2",
+      "width": 2,
+      "depth": 1,
+      "height": 3,
+      "source": "https://library.ldraw.org/library/official/parts/3004.dat"
+    },
+    "3005": {
+      "name": "Brick 1 x 1",
+      "width": 1,
+      "depth": 1,
+      "height": 3,
+      "source": "https://library.ldraw.org/library/official/parts/3005.dat"
+    },
+    "3010": {
+      "name": "Brick 1 x 4",
+      "width": 4,
+      "depth": 1,
+      "height": 3,
+      "source": "https://library.ldraw.org/library/official/parts/3010.dat"
+    },
+    "3020": {
+      "name": "Plate 2 x 4",
+      "width": 4,
+      "depth": 2,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3020.dat"
+    },
+    "3021": {
+      "name": "Plate 2 x 3",
+      "width": 3,
+      "depth": 2,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3021.dat"
+    },
+    "3022": {
+      "name": "Plate 2 x 2",
+      "width": 2,
+      "depth": 2,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3022.dat"
+    },
+    "3023": {
+      "name": "Plate 1 x 2",
+      "width": 2,
+      "depth": 1,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3023.dat"
+    },
+    "3024": {
+      "name": "Plate 1 x 1",
+      "width": 1,
+      "depth": 1,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3024.dat"
+    },
+    "3795": {
+      "name": "Plate 2 x 6",
+      "width": 6,
+      "depth": 2,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3795.dat"
+    },
+    "3034": {
+      "name": "Plate 2 x 8",
+      "width": 8,
+      "depth": 2,
+      "height": 1,
+      "source": "https://library.ldraw.org/library/official/parts/3034.dat"
+    }
+  },
+  "colors": {
+    "0": {
+      "name": "Black",
+      "hex": "#252A34"
+    },
+    "1": {
+      "name": "Blue",
+      "hex": "#0055BF"
+    },
+    "2": {
+      "name": "Green",
+      "hex": "#237841"
+    },
+    "4": {
+      "name": "Red",
+      "hex": "#C91A09"
+    },
+    "14": {
+      "name": "Yellow",
+      "hex": "#F2CD37"
+    },
+    "15": {
+      "name": "White",
+      "hex": "#F4F4F4"
+    },
+    "19": {
+      "name": "Tan",
+      "hex": "#E4CD9E"
+    },
+    "71": {
+      "name": "Light bluish gray",
+      "hex": "#A0A5A9"
+    },
+    "72": {
+      "name": "Dark bluish gray",
+      "hex": "#6C6E68"
+    },
+    "272": {
+      "name": "Dark blue",
+      "hex": "#0A3463"
+    }
+  }
+}

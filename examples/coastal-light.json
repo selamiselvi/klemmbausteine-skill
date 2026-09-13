@@ -1,0 +1,648 @@
+{
+  "schema_version": "1.0",
+  "id": "coastal-light",
+  "title": "Coastal Light",
+  "description": "A compact red-and-white lighthouse on a sandy shore. An original small assembly for testing the complete model-to-instructions workflow.",
+  "author": "Klemmbausteine project",
+  "license": "UNLICENSED",
+  "parts": [
+    {
+      "id": "p001",
+      "part": "3034",
+      "color": "272",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "rotation": 0
+    },
+    {
+      "id": "p002",
+      "part": "3034",
+      "color": "272",
+      "x": 0,
+      "y": 2,
+      "z": 0,
+      "rotation": 0
+    },
+    {
+      "id": "p003",
+      "part": "3034",
+      "color": "272",
+      "x": 0,
+      "y": 4,
+      "z": 0,
+      "rotation": 0
+    },
+    {
+      "id": "p004",
+      "part": "3034",
+      "color": "272",
+      "x": 0,
+      "y": 6,
+      "z": 0,
+      "rotation": 0
+    },
+    {
+      "id": "p005",
+      "part": "3034",
+      "color": "272",
+      "x": 0,
+      "y": 0,
+      "z": 1,
+      "rotation": 90
+    },
+    {
+      "id": "p006",
+      "part": "3034",
+      "color": "19",
+      "x": 2,
+      "y": 0,
+      "z": 1,
+      "rotation": 90
+    },
+    {
+      "id": "p007",
+      "part": "3034",
+      "color": "19",
+      "x": 4,
+      "y": 0,
+      "z": 1,
+      "rotation": 90
+    },
+    {
+      "id": "p008",
+      "part": "3034",
+      "color": "19",
+      "x": 6,
+      "y": 0,
+      "z": 1,
+      "rotation": 90
+    },
+    {
+      "id": "p009",
+      "part": "3004",
+      "color": "0",
+      "x": 3,
+      "y": 1,
+      "z": 2,
+      "rotation": 0
+    },
+    {
+      "id": "p010",
+      "part": "3001",
+      "color": "15",
+      "x": 2,
+      "y": 2,
+      "z": 2,
+      "rotation": 0
+    },
+    {
+      "id": "p011",
+      "part": "3001",
+      "color": "15",
+      "x": 2,
+      "y": 4,
+      "z": 2,
+      "rotation": 0
+    },
+    {
+      "id": "p012",
+      "part": "3001",
+      "color": "15",
+      "x": 2,
+      "y": 2,
+      "z": 5,
+      "rotation": 90
+    },
+    {
+      "id": "p013",
+      "part": "3001",
+      "color": "15",
+      "x": 4,
+      "y": 2,
+      "z": 5,
+      "rotation": 90
+    },
+    {
+      "id": "p014",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 2,
+      "z": 8,
+      "rotation": 0
+    },
+    {
+      "id": "p015",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 4,
+      "z": 8,
+      "rotation": 0
+    },
+    {
+      "id": "p016",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 2,
+      "z": 11,
+      "rotation": 90
+    },
+    {
+      "id": "p017",
+      "part": "3001",
+      "color": "4",
+      "x": 4,
+      "y": 2,
+      "z": 11,
+      "rotation": 90
+    },
+    {
+      "id": "p018",
+      "part": "3001",
+      "color": "15",
+      "x": 2,
+      "y": 2,
+      "z": 14,
+      "rotation": 0
+    },
+    {
+      "id": "p019",
+      "part": "3001",
+      "color": "15",
+      "x": 2,
+      "y": 4,
+      "z": 14,
+      "rotation": 0
+    },
+    {
+      "id": "p020",
+      "part": "3001",
+      "color": "15",
+      "x": 2,
+      "y": 2,
+      "z": 17,
+      "rotation": 90
+    },
+    {
+      "id": "p021",
+      "part": "3001",
+      "color": "15",
+      "x": 4,
+      "y": 2,
+      "z": 17,
+      "rotation": 90
+    },
+    {
+      "id": "p022",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 2,
+      "z": 20,
+      "rotation": 0
+    },
+    {
+      "id": "p023",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 4,
+      "z": 20,
+      "rotation": 0
+    },
+    {
+      "id": "p024",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 2,
+      "z": 23,
+      "rotation": 90
+    },
+    {
+      "id": "p025",
+      "part": "3001",
+      "color": "4",
+      "x": 4,
+      "y": 2,
+      "z": 23,
+      "rotation": 90
+    },
+    {
+      "id": "p026",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 1,
+      "z": 26,
+      "rotation": 0
+    },
+    {
+      "id": "p027",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 3,
+      "z": 26,
+      "rotation": 0
+    },
+    {
+      "id": "p028",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 5,
+      "z": 26,
+      "rotation": 0
+    },
+    {
+      "id": "p029",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 1,
+      "z": 27,
+      "rotation": 90
+    },
+    {
+      "id": "p030",
+      "part": "3795",
+      "color": "0",
+      "x": 3,
+      "y": 1,
+      "z": 27,
+      "rotation": 90
+    },
+    {
+      "id": "p031",
+      "part": "3795",
+      "color": "0",
+      "x": 5,
+      "y": 1,
+      "z": 27,
+      "rotation": 90
+    },
+    {
+      "id": "p032",
+      "part": "3003",
+      "color": "14",
+      "x": 3,
+      "y": 3,
+      "z": 28,
+      "rotation": 0
+    },
+    {
+      "id": "p033",
+      "part": "3005",
+      "color": "15",
+      "x": 2,
+      "y": 2,
+      "z": 28,
+      "rotation": 0
+    },
+    {
+      "id": "p034",
+      "part": "3005",
+      "color": "15",
+      "x": 5,
+      "y": 2,
+      "z": 28,
+      "rotation": 0
+    },
+    {
+      "id": "p035",
+      "part": "3005",
+      "color": "15",
+      "x": 2,
+      "y": 5,
+      "z": 28,
+      "rotation": 0
+    },
+    {
+      "id": "p036",
+      "part": "3005",
+      "color": "15",
+      "x": 5,
+      "y": 5,
+      "z": 28,
+      "rotation": 0
+    },
+    {
+      "id": "p037",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 1,
+      "z": 34,
+      "rotation": 0
+    },
+    {
+      "id": "p038",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 3,
+      "z": 34,
+      "rotation": 0
+    },
+    {
+      "id": "p039",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 5,
+      "z": 34,
+      "rotation": 0
+    },
+    {
+      "id": "p040",
+      "part": "3795",
+      "color": "0",
+      "x": 1,
+      "y": 1,
+      "z": 35,
+      "rotation": 90
+    },
+    {
+      "id": "p041",
+      "part": "3795",
+      "color": "0",
+      "x": 3,
+      "y": 1,
+      "z": 35,
+      "rotation": 90
+    },
+    {
+      "id": "p042",
+      "part": "3795",
+      "color": "0",
+      "x": 5,
+      "y": 1,
+      "z": 35,
+      "rotation": 90
+    },
+    {
+      "id": "p043",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 2,
+      "z": 36,
+      "rotation": 0
+    },
+    {
+      "id": "p044",
+      "part": "3001",
+      "color": "4",
+      "x": 2,
+      "y": 4,
+      "z": 36,
+      "rotation": 0
+    },
+    {
+      "id": "p045",
+      "part": "3003",
+      "color": "0",
+      "x": 3,
+      "y": 3,
+      "z": 39,
+      "rotation": 0
+    },
+    {
+      "id": "p046",
+      "part": "3005",
+      "color": "72",
+      "x": 0,
+      "y": 1,
+      "z": 2,
+      "rotation": 0
+    },
+    {
+      "id": "p047",
+      "part": "3003",
+      "color": "71",
+      "x": 0,
+      "y": 6,
+      "z": 2,
+      "rotation": 0
+    },
+    {
+      "id": "p048",
+      "part": "3003",
+      "color": "14",
+      "x": 3,
+      "y": 3,
+      "z": 31,
+      "rotation": 0
+    },
+    {
+      "id": "p049",
+      "part": "3005",
+      "color": "15",
+      "x": 2,
+      "y": 2,
+      "z": 31,
+      "rotation": 0
+    },
+    {
+      "id": "p050",
+      "part": "3005",
+      "color": "15",
+      "x": 5,
+      "y": 2,
+      "z": 31,
+      "rotation": 0
+    },
+    {
+      "id": "p051",
+      "part": "3005",
+      "color": "15",
+      "x": 2,
+      "y": 5,
+      "z": 31,
+      "rotation": 0
+    },
+    {
+      "id": "p052",
+      "part": "3005",
+      "color": "15",
+      "x": 5,
+      "y": 5,
+      "z": 31,
+      "rotation": 0
+    }
+  ],
+  "steps": [
+    {
+      "title": "Lay out the foundation",
+      "parts": [
+        "p001",
+        "p002",
+        "p003",
+        "p004"
+      ],
+      "note": "Place these four plates side by side on a flat table. The next step connects them."
+    },
+    {
+      "title": "Lock the foundation",
+      "parts": [
+        "p005",
+        "p006",
+        "p007",
+        "p008"
+      ]
+    },
+    {
+      "title": "Shoreline rocks",
+      "parts": [
+        "p046",
+        "p047"
+      ],
+      "view": "front-left"
+    },
+    {
+      "title": "Build the entrance",
+      "parts": [
+        "p009"
+      ],
+      "view": "front-right"
+    },
+    {
+      "title": "Tower course 1",
+      "parts": [
+        "p010",
+        "p011"
+      ]
+    },
+    {
+      "title": "Tower course 2",
+      "parts": [
+        "p012",
+        "p013"
+      ]
+    },
+    {
+      "title": "Tower course 3",
+      "parts": [
+        "p014",
+        "p015"
+      ]
+    },
+    {
+      "title": "Tower course 4",
+      "parts": [
+        "p016",
+        "p017"
+      ]
+    },
+    {
+      "title": "Tower course 5",
+      "parts": [
+        "p018",
+        "p019"
+      ]
+    },
+    {
+      "title": "Tower course 6",
+      "parts": [
+        "p020",
+        "p021"
+      ]
+    },
+    {
+      "title": "Tower course 7",
+      "parts": [
+        "p022",
+        "p023"
+      ]
+    },
+    {
+      "title": "Tower course 8",
+      "parts": [
+        "p024",
+        "p025"
+      ]
+    },
+    {
+      "title": "Overhang the gallery",
+      "parts": [
+        "p026",
+        "p027",
+        "p028"
+      ]
+    },
+    {
+      "title": "Cross-brace the gallery",
+      "parts": [
+        "p029",
+        "p030",
+        "p031"
+      ]
+    },
+    {
+      "title": "Place the lantern",
+      "parts": [
+        "p032"
+      ]
+    },
+    {
+      "title": "Front lantern posts",
+      "parts": [
+        "p033",
+        "p034"
+      ]
+    },
+    {
+      "title": "Rear lantern posts",
+      "parts": [
+        "p035",
+        "p036"
+      ],
+      "view": "back-right"
+    },
+    {
+      "title": "Raise the lantern",
+      "parts": [
+        "p048",
+        "p049",
+        "p050",
+        "p051",
+        "p052"
+      ],
+      "view": "front-right"
+    },
+    {
+      "title": "Cover the lantern",
+      "parts": [
+        "p037",
+        "p038",
+        "p039"
+      ],
+      "view": "front-right"
+    },
+    {
+      "title": "Tie the roof together",
+      "parts": [
+        "p040",
+        "p041",
+        "p042"
+      ]
+    },
+    {
+      "title": "Raise the roof",
+      "parts": [
+        "p043",
+        "p044"
+      ]
+    },
+    {
+      "title": "Finish the beacon",
+      "parts": [
+        "p045"
+      ]
+    }
+  ]
+}
