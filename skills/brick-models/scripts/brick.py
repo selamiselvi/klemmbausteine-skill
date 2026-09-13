@@ -29,10 +29,12 @@ def checked_model(path):
     if not r['passed']:raise ValueError('Invalid model:\n'+'\n'.join(r['errors']))
     return m,r
 
-def write_manifest(stage,m,quality):
-    files={name:{'bytes':(stage/name).stat().st_size,'sha256':sha(stage/name)} for name in sorted(output_names(m))}
-    (stage/'manifest.json').write_text(dumps({'schema_version':'1.0','generator_version':VERSION,'model_id':m['id'],
-              'title':m['title'],'author':m['author'],'license':m['license'],'quality':quality,'files':files}))
+def write_manifest(stage,m,quality,style='studio'):
+    files={name:{'bytes':(stage/name).stat().st_size,'sha256':sha(stage/name)} for name in sorted(output_names(m,style))}
+    manifest={'schema_version':'1.0','generator_version':VERSION,'model_id':m['id'],
+              'title':m['title'],'author':m['author'],'license':m['license'],'quality':quality,'files':files}
+    if style=='technical':manifest.update(schema_version='1.1',instruction_style=style)
+    (stage/'manifest.json').write_text(dumps(manifest))
 
 def finish_images(stage):
     # Composite our freshly rendered transparent studio scene onto the required white canvas.
@@ -47,11 +49,13 @@ def inspect_bundle(folder):
     if not folder.is_dir():raise ValueError('Bundle directory missing')
     for p in folder.rglob('*'):
         if p.is_symlink():raise ValueError(f'Symlinks are not allowed: {p.name}')
-    m,r=checked_model(folder/'model.json');expected=output_names(m)
+    m,r=checked_model(folder/'model.json');manifest=read_json(folder/'manifest.json')
+    style=manifest.get('instruction_style','studio')
+    if style not in ('studio','technical'):raise ValueError('Unknown instruction style')
+    expected=output_names(m,style)
     actual={p.relative_to(folder).as_posix() for p in folder.rglob('*') if p.is_file()}
     if actual != expected|{'manifest.json'}:raise ValueError(f'Bundle file inventory mismatch: {sorted(actual.symmetric_difference(expected|{"manifest.json"}))}')
-    manifest=read_json(folder/'manifest.json')
-    if manifest.get('schema_version')!='1.0' or manifest.get('model_id')!=m['id']:raise ValueError('Manifest identity/version mismatch')
+    if manifest.get('schema_version')!=('1.1' if style=='technical' else '1.0') or manifest.get('model_id')!=m['id']:raise ValueError('Manifest identity/version mismatch')
     for key in ('title','author','license'):
         if manifest.get(key)!=m[key]:raise ValueError(f'Manifest {key} differs from model')
     if manifest.get('quality') not in ('standard','draft'):raise ValueError('Unknown render quality')
@@ -75,6 +79,11 @@ def inspect_bundle(folder):
                            parts=inventory([by[id] for id in s['parts']]),placements=placements(m,s))
         if actual_step!=expected_step:raise ValueError(f'Step {n} data differs from model')
     from PIL import Image
+    if style=='technical':
+        for p in inventory(m['parts']):
+            with Image.open(folder/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png') as image:
+                if image.format!='PNG' or image.size!=(320,320):raise ValueError('Invalid part icon')
+                image.verify()
     for view in VIEWS:
         with Image.open(folder/f'renders/{view}.png') as image:
             size=1200 if manifest['quality']=='standard' else 720
@@ -103,11 +112,11 @@ def build(args):
         print(f'Validated {len(m["parts"])} parts / {len(steps)} steps. Rendering locally with Blender…',flush=True)
         log=Path(tmp)/'render.log'
         with log.open('w') as stream:
-            run=subprocess.run([blender,'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(stage/'model.json'),str(stage),args.quality],stdout=stream,stderr=subprocess.STDOUT,timeout=args.timeout)
+            run=subprocess.run([blender,'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(stage/'model.json'),str(stage),args.quality,args.instruction_style],stdout=stream,stderr=subprocess.STDOUT,timeout=args.timeout)
         if run.returncode:raise ValueError('Blender failed:\n'+'\n'.join(log.read_text(errors='replace').splitlines()[-25:]))
         finish_images(stage)
-        browser(m,steps,stage);pdf(m,steps,r,stage)
-        write_manifest(stage,m,args.quality)
+        browser(m,steps,stage,args.instruction_style);pdf(m,steps,r,stage,args.instruction_style)
+        write_manifest(stage,m,args.quality,args.instruction_style)
         inspect_bundle(stage)
         stage.rename(out)
     print(dumps({'output':str(out),'part_count':len(m['parts']),'step_count':len(steps),'warnings':r['warnings'],'guide':str(out/'instructions/index.html')}))
@@ -120,9 +129,17 @@ def refresh_guide(args):
     with tempfile.TemporaryDirectory(prefix='.brick-guide-',dir=out.parent) as tmp:
         stage=Path(tmp)/'bundle';shutil.copytree(source,stage)
         from guide import export_steps,browser,pdf
-        steps=export_steps(m,stage);browser(m,steps,stage);pdf(m,steps,r,stage)
-        write_manifest(stage,m,old['quality']);inspect_bundle(stage);stage.rename(out)
-    print(dumps({'output':str(out),'rerendered':False}))
+        style=old.get('instruction_style','studio')
+        if getattr(args,'instruction_style',None)=='technical' and style!='technical':
+            style='technical'
+            log=Path(tmp)/'render.log'
+            with log.open('w') as stream:
+                run=subprocess.run([blender_path(getattr(args,'blender',None)),'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(stage/'model.json'),str(stage),old['quality'],style,'steps-only'],stdout=stream,stderr=subprocess.STDOUT,timeout=getattr(args,'timeout',1800))
+            if run.returncode:raise ValueError('Blender failed:\n'+'\n'.join(log.read_text(errors='replace').splitlines()[-25:]))
+            finish_images(stage/'instructions')
+        steps=export_steps(m,stage);browser(m,steps,stage,style);pdf(m,steps,r,stage,style)
+        write_manifest(stage,m,old['quality'],style);inspect_bundle(stage);stage.rename(out)
+    print(dumps({'output':str(out),'instruction_style':style,'rerendered':style!=old.get('instruction_style','studio')}))
 
 def pack(args):
     folder=Path(args.folder).resolve();inspect_bundle(folder);dest=Path(args.zip).expanduser().resolve()
@@ -147,8 +164,10 @@ def main():
     sub.add_parser('doctor');sub.add_parser('catalog')
     p=sub.add_parser('validate');p.add_argument('model')
     p=sub.add_parser('build');p.add_argument('model');p.add_argument('--out',required=True);p.add_argument('--blender');p.add_argument('--quality',choices=['draft','standard'],default='standard');p.add_argument('--timeout',type=int,default=1800)
+    p.add_argument('--instruction-style',choices=['studio','technical'],default='studio')
     p=sub.add_parser('verify');p.add_argument('folder')
     p=sub.add_parser('refresh-guide');p.add_argument('folder');p.add_argument('--out',required=True)
+    p.add_argument('--instruction-style',choices=['technical']);p.add_argument('--blender');p.add_argument('--timeout',type=int,default=1800)
     p=sub.add_parser('pack');p.add_argument('folder');p.add_argument('--zip',required=True)
     a=parser.parse_args()
     try:

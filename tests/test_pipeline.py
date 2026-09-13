@@ -73,8 +73,10 @@ class ModelTests(unittest.TestCase):
     def test_browser_data_cannot_escape_script_element(self):
         m=small();m['title']='</script><script>alert(1)</script>'
         with tempfile.TemporaryDirectory() as d:
-            out=Path(d);(out/'instructions').mkdir();browser(m,[],out)
-            s=(out/'instructions/index.html').read_text()
-            self.assertNotIn(m['title'],s);self.assertIn('\\u003c/script>',s)
+            out=Path(d);(out/'instructions').mkdir()
+            for style in ('studio','technical'):
+                browser(m,[],out,style)
+                s=(out/'instructions/index.html').read_text()
+                self.assertNotIn(m['title'],s);self.assertIn('\\u003c/script>',s)
 
 if __name__=='__main__':unittest.main()

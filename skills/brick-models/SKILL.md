@@ -25,7 +25,11 @@ Run `python scripts/brick.py build MODEL --out OUTPUT` to produce the complete r
 
 Inspect all four renders and representative early/middle/late instruction pages plus the parts inventory. Check silhouette, actual placement visibility, framing and readable labels. The guide includes a cumulative 3D view and a stud-grid placement inset; newly added pieces retain their color while earlier pieces are muted. If a step is ambiguous, split it or change its camera in the model and rebuild. Rendering success alone is not quality approval.
 
+For a technical instruction variant, add `--instruction-style technical` to `build`. It preserves all part colors, marks new body edges blue, uses simple face shading without studio shadows, and shows actual part icons with quantities. Coordinates remain in the structured exports but are hidden in the PDF and browser guide. Compare this optional style with the creator before treating it as their preferred default.
+
 When only the guide layout or UI code changes, use `python scripts/brick.py refresh-guide OUTPUT --out NEW_OUTPUT` to regenerate PDF/HTML/maps while preserving the validated model and rendered images.
+
+To convert an existing studio guide, add `--instruction-style technical` to `refresh-guide`. It renders only the steps and part icons, preserving all four original hero PNGs byte for byte. A later refresh of a technical bundle preserves those images as well.
 
 ## Deliver and share
 

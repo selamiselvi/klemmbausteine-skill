@@ -33,6 +33,14 @@ Use `--quality draft` for lower-resolution iteration. Existing output directorie
 .venv/bin/python skills/brick-models/scripts/brick.py refresh-guide outputs/coastal-light --out outputs/coastal-light-guide-v2
 ```
 
+To compare an optional technical guide with the same model and untouched hero renders:
+
+```sh
+.venv/bin/python skills/brick-models/scripts/brick.py refresh-guide outputs/coastal-light --out outputs/coastal-light-technical --instruction-style technical
+```
+
+This variant retains all brick colors, uses blue edges for new additions, replaces studio lighting with simple face tones, and shows rendered part icons and quantities. Coordinate maps stay in the bundle data but are hidden in the guide. For new models, `build --instruction-style technical` produces this style directly. It is currently an alternative for visual comparison; the default remains the original studio guide.
+
 ## Validate and package
 
 ```sh

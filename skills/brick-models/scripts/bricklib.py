@@ -130,9 +130,11 @@ def ldraw(model):
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
-def output_names(model):
+def output_names(model,style='studio'):
     names={'model.json','model.ldr','catalog.json','parts.csv','validation.json','instructions.pdf','instructions/index.html','instructions/steps.json'}
     names.update(f'renders/{v}.png' for v in VIEWS)
     for n in range(1,len(model['steps'])+1):
         names.add(f'instructions/step-{n:03}.png');names.add(f'instructions/map-{n:03}.svg')
+    if style=='technical':
+        names.update(f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png' for p in inventory(model['parts']))
     return names

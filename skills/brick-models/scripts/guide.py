@@ -47,7 +47,7 @@ def export_steps(model,out):
     result={'schema_version':'1.0','model_id':model['id'],'steps':steps}
     (out/'instructions/steps.json').write_text(dumps(result));return steps
 
-def browser(model,steps,out):
+def browser(model,steps,out,style='studio'):
     payload=json.dumps({'model':{k:model[k] for k in ('id','title','author')},'steps':steps,'colors':COLORS},ensure_ascii=False).replace('<','\\u003c').replace('&','\\u0026')
     page='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__TITLE__ · Building guide</title><style>
@@ -60,9 +60,16 @@ data.steps.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.
 function show(){const s=data.steps[index];el('number').textContent=String(index+1).padStart(2,'0');el('counter').textContent=`${index+1} / ${data.steps.length}`;el('title').textContent=s.title;el('assembly').src=s.image;el('assembly').alt=`Step ${index+1}: ${s.title}`;el('map').src=s.map;el('note').textContent=s.note;el('view').textContent=s.view.replaceAll('-',' ');el('parts').replaceChildren();s.parts.forEach(p=>{const row=document.createElement('div');row.className='part';const sw=document.createElement('span');sw.className='swatch';sw.style.background=data.colors[p.color_id].hex;const label=document.createElement('span');label.textContent=p.part_name;const small=document.createElement('small');small.textContent=`${p.color_name} · ${p.part_id}`;label.append(small);const q=document.createElement('b');q.textContent=`${p.quantity}×`;row.append(sw,label,q);el('parts').append(row)});el('placements').replaceChildren();s.placements.forEach(p=>{const row=document.createElement('div');row.textContent=`${p.marker}: x${p.x} y${p.y} z${p.z} · ${p.rotation}°`;el('placements').append(row)});el('jump').value=index;el('prev').disabled=index===0;el('next').disabled=index===data.steps.length-1}
 el('prev').onclick=()=>{if(index>0){index--;show()}};el('next').onclick=()=>{if(index<data.steps.length-1){index++;show()}};el('jump').onchange=e=>{index=Number(e.target.value);show()};document.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(e.key==='ArrowRight'){e.preventDefault();el('next').click()}if(e.key==='ArrowLeft'){e.preventDefault();el('prev').click()}});show();
 </script></html>'''
+    if style=='technical':
+        page=page.replace('</style>', '''
+body{background:#fff}.layout{grid-template-columns:240px minmax(0,1fr);gap:32px}.layout>div{grid-column:2;grid-row:1}.aside{grid-column:1;grid-row:1}.map,.placements{display:none}.part{display:grid;grid-template-columns:88px 1fr;gap:8px;margin:4px 0 18px}.part .part-icon{width:88px;height:88px;object-fit:contain}.part b{grid-column:2;grid-row:1;margin:0;font-size:20px}.part>span{grid-column:1/-1;font-size:13px}.note{font-size:12px}.assembly{max-height:70vh}footer{background:#fff}
+@media(max-width:760px){.layout{display:flex;flex-direction:column;gap:12px}.aside{display:block;order:-1}.aside>div>div{display:flex;flex-wrap:wrap;gap:16px}.part{width:132px;grid-template-columns:80px 1fr}.part .part-icon{width:80px;height:80px}.aside h2{display:none}.assembly{max-height:60vh}.note:empty{display:none}}
+</style>''')
+        page=page.replace("const sw=document.createElement('span');sw.className='swatch';sw.style.background=data.colors[p.color_id].hex;", "const sw=document.createElement('img');sw.className='part-icon';sw.src=`parts/${p.part_id}-${p.color_id}.png`;sw.alt=`${p.color_name} ${p.part_name}`;")
+        page=page.replace("el('view').textContent=s.view.replaceAll('-',' ');", "el('view').textContent=index>0&&s.view!==data.steps[index-1].view?'↻ '+s.view.replaceAll('-',' '):'';")
     (out/'instructions/index.html').write_text(page.replace('__TITLE__',html.escape(model['title'])).replace('__DATA__',payload))
 
-def pdf(model,steps,report,out):
+def pdf(model,steps,report,out,style='studio'):
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import HexColor
     from reportlab.pdfbase import pdfmetrics
@@ -100,6 +107,39 @@ def pdf(model,steps,report,out):
     text(36,87,model['author'],10,color=muted)
     c.drawImage(str(out/'renders/front-right.png'),350,75,455,455,preserveAspectRatio=True,mask='auto');footer(1);c.showPage()
     by={p['id']:p for p in model['parts']}
+    if style=='technical':
+        for n,s in enumerate(steps,1):
+            text(36,535,f'{n:02}',36,'Bold',blue)
+            for i,line in enumerate(wrap(s['title'],670,20,'Bold')):text(110,546-i*25,line,20,'Bold')
+            c.drawImage(str(out/'instructions'/s['image']),265,48,540,470,preserveAspectRatio=True,anchor='c',mask='auto')
+            text(36,479,'PARTS TO ADD',9,'Bold',muted)
+            dense=len(s['parts'])>4;pitch=86 if dense else 112;icon_size=64 if dense else 80
+            for i,p in enumerate(s['parts']):
+                x=36+(i%2)*112;y=(402 if dense else 382)-(i//2)*pitch
+                c.drawImage(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y+10,icon_size,icon_size,mask='auto')
+                text(x+81,y+44,f'{p["quantity"]}x',13,'Bold')
+                text(x,y,p['part_name'],9,'Bold')
+                text(x,y-13,p['part_id'],8,color=muted)
+            yy=112
+            if n>1 and s['view']!=steps[n-2]['view']:
+                text(36,yy,'TURN / '+s['view'].replace('-',' ').upper(),9,'Bold',blue);yy-=20
+            if s['note']:
+                for line in wrap(s['note'],215,9):text(36,yy,line,9,color=muted);yy-=13
+            if n==1:text(36,54,'Blue edges: parts added in this step',8,color=blue)
+            footer(n+1);c.showPage()
+        inv=inventory(model['parts']);page=len(steps)+2
+        for start in range(0,len(inv),12):
+            text(36,540,'Parts inventory',26,'Bold')
+            text(36,514,'LDraw IDs / color availability not checked',10,color=muted)
+            for i,p in enumerate(inv[start:start+12]):
+                x=36+(i%3)*258;y=388-(i//3)*112
+                c.drawImage(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y,94,94,mask='auto')
+                text(x+108,y+61,f'{p["quantity"]}x',18,'Bold')
+                text(x+108,y+42,p['part_name'],10,'Bold')
+                text(x+108,y+25,p['color_name'],9,color=muted)
+                text(x+108,y+10,p['part_id'],8,color=muted)
+            footer(page);page+=1;c.showPage()
+        c.save();return
     for n,s in enumerate(steps,1):
         text(34,538,f'{n:02}',34,'Bold',blue)
         title_lines=wrap(s['title'],650,20,'Bold')
