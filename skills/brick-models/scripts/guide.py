@@ -90,6 +90,17 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
             missing={char for text in all_text for char in text if not char.isspace() and ord(char) not in glyphs}
             if missing:raise ValueError('PDF font lacks translation glyphs; supply compatible --font and --bold-font')
     c=canvas.Canvas(str(out/'instructions.pdf'),pagesize=(842,595),invariant=1)
+    def draw_image(path,*args,**kwargs):
+        from io import BytesIO
+        from PIL import Image
+        from reportlab.lib.utils import ImageReader
+        image=path
+        with Image.open(path) as source:
+            if source.mode=='RGB' and min(source.size)>=640:
+                data=BytesIO()
+                source.save(data,format='JPEG',quality=92,subsampling=0,optimize=True)
+                data.seek(0);image=ImageReader(data)
+        c.drawImage(image,*args,**kwargs)
     c.setTitle(model['title']);c.setAuthor(model['author']);ink=HexColor('#19394b');muted=HexColor('#637786');blue=HexColor('#006d9c')
     def text(x,y,t,size=11,font='Body',color=ink):
         c.setFillColor(color);c.setFont(font,size);c.drawString(x,y,t)
@@ -120,19 +131,19 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
     status_lines=wrap(labels['digital_status'],285,10)
     for i,line in enumerate(status_lines):text(36,108-i*13,line,10,color=muted)
     text(36,108-len(status_lines)*13-8,model['author'],10,color=muted)
-    c.drawImage(str(out/'renders/front-right.png'),350,75,455,455,preserveAspectRatio=True,mask='auto');footer(1);c.showPage()
+    draw_image(str(out/'renders/front-right.png'),350,75,455,455,preserveAspectRatio=True,mask='auto');footer(1);c.showPage()
     by={p['id']:p for p in model['parts']}
     if style=='technical':
         title_x=max(110,36+pdfmetrics.stringWidth(f'{len(steps):02}','Bold',36)+20)
         for n,s in enumerate(steps,1):
             text(36,535,f'{n:02}',36,'Bold',blue)
             for i,line in enumerate(wrap(s['title'],805-title_x,20,'Bold')):text(title_x,546-i*25,line,20,'Bold')
-            c.drawImage(str(out/'instructions'/s['image']),265,48,540,470,preserveAspectRatio=True,anchor='c',mask='auto')
+            draw_image(str(out/'instructions'/s['image']),265,48,540,470,preserveAspectRatio=True,anchor='c',mask='auto')
             text(36,479,labels['parts_to_add'],9,'Bold',muted)
             dense=len(s['parts'])>4;pitch=86 if dense else 112;icon_size=64 if dense else 80
             for i,p in enumerate(s['parts']):
                 x=36+(i%2)*112;y=(402 if dense else 382)-(i//2)*pitch
-                c.drawImage(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y+10,icon_size,icon_size,mask='auto')
+                draw_image(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y+10,icon_size,icon_size,mask='auto')
                 text(x+81,y+44,f'{p["quantity"]}x',13,'Bold')
                 text(x,y,part_name(p),9,'Bold')
                 text(x,y-13,p['part_id'],8,color=muted)
@@ -149,7 +160,7 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
             text(36,514,labels['availability'],10,color=muted)
             for i,p in enumerate(inv[start:start+12]):
                 x=36+(i%3)*258;y=388-(i//3)*112
-                c.drawImage(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y,94,94,mask='auto')
+                draw_image(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y,94,94,mask='auto')
                 text(x+108,y+61,f'{p["quantity"]}x',18,'Bold')
                 text(x+108,y+42,part_name(p),10,'Bold')
                 text(x+108,y+25,color_name(p),9,color=muted)
@@ -161,7 +172,7 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
         text(34,538,f'{n:02}',34,'Bold',blue)
         title_lines=wrap(s['title'],805-title_x,20,'Bold')
         for i,line in enumerate(title_lines):text(title_x,547-i*25,line,20,'Bold')
-        c.drawImage(str(out/'instructions'/s['image']),25,80,490,440,preserveAspectRatio=True,anchor='c',mask='auto')
+        draw_image(str(out/'instructions'/s['image']),25,80,490,440,preserveAspectRatio=True,anchor='c',mask='auto')
         text(555,496,labels['parts_to_add'],10,'Bold',blue);yy=473
         for p in s['parts']:
             c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.setStrokeColor(HexColor('#c5cdd2'));c.rect(555,yy-3,13,13,fill=1,stroke=1)
