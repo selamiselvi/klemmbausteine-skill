@@ -6,6 +6,8 @@ All canonical copy and helper output are English. The agent presents them in the
 
 ## Conversation
 
+The Astra compatibility check in `first-run.md` comes before this design questionnaire. It is separate from optional design planning, including auto mode, and is not repeated when already resolved for this session. Artifact prose defaults to English independently of the language used for these questions; see `language.md`.
+
 1. Establish the subject from a text description, reference image, or both. If none is given, use the entry invitation in `SKILL.md`, which explicitly offers both input types, unless the user also delegates the subject. Do not add a separate text-versus-image selection question. For an image, inspect the main shape, proportions, colors and distinctive features; a caption is optional. Clarify only an unclear target when several objects are equally plausible, or an inaccessible image. Unseen sides require a design interpretation, not a mandatory request for more photos. Reference images guide geometry; do not automatically copy them into the sharing bundle.
 2. Reuse explicit preferences and mode choices already given. “Just make it”, “you decide”, “skip the questions” and equivalent wording select auto mode immediately. A request to work through the choices selects guided mode. Do not ask the mode question again when intent is already clear. When all three preferences are supplied, proceed directly.
 3. Otherwise run the helper with known choices, for example `python scripts/intake.py --size small`. Its only question is “How would you like to start?” with two options. Present it in the user's language and wait for this choice before showing any detailed questions. Silence or a preselected option is not consent to a mode.

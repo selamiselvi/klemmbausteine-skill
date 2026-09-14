@@ -4,6 +4,8 @@ The executable schema is `model.schema.json`; the part/color catalog is `catalog
 
 ## Model
 
+New community bundles use English for the title, description and all step prose, as well as the guide labels and inventory. Proper names retain their spelling. This is an authoring/review requirement; schema validation is not language detection. Additional translated PDFs stay outside this versioned bundle; see `language.md`.
+
 `schema_version: "1.0"`, a lowercase hyphenated `id`, `title`, `description`, `author`, `license` (use `UNLICENSED` until the creator chooses), `parts`, and `steps`.
 
 Each part has a unique `id`, catalog `part` and `color` strings, integer `x`, `y`, `z`, and `rotation` (0 or 90). X/Y are the minimum footprint corner in stud units; Z is the bottom of the brick body in plate units. One stud is 8 mm, one plate is 3.2 mm, a brick is 3 plates. Studs are not included in body height. Rotation swaps catalog length/depth around the footprint center; X/Y remain its minimum corner. All pieces are upright. Z cannot be negative.

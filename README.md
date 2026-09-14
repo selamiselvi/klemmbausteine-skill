@@ -20,6 +20,12 @@ The skill is self-contained in that folder. It contains no website administratio
 
 The repository and canonical prompts are written in English. Use the skill in your own language; the agent translates the conversation and questions while keeping the same planning choices and targets.
 
+The design workflow targets **GPT-6 Astra**. The agent checks reliable current-session model information when available; otherwise it asks once whether Astra is selected. A different model prompts a switch request. The skill cannot switch models itself or reliably infer the active model from global defaults. An explicit choice to continue with another model is respected.
+
+For real buildings, the agent researches multiple views and defining details before designing, then compares the draft with those references. Research notes and reference photos stay outside the generated community bundle.
+
+Community outputs are consistently **English**, including step titles and notes. On request, the agent can produce an additional fully translated PDF using the existing images; no Blender rerender is needed. The English bundle stays intact. See [language handling](skills/brick-models/references/language.md).
+
 Before designing a new model, the agent offers “Start right away” or “Choose together”. Saying “just make it” skips even this question: the agent chooses size and detail to suit the subject and proceeds. Guided mode asks about size, detail and building experience, reusing answers already given. A small intake helper provides fixed questions and turns the selected profile into size/parts targets and instruction granularity. These are project-specific planning estimates, not official product categories or build-time guarantees. See [the intake workflow](skills/brick-models/references/intake.md).
 
 ## Run the source example locally
@@ -27,6 +33,8 @@ Before designing a new model, the agent offers “Start right away” or “Choo
 `examples/coastal-light.json` is a reproducible input model, not a generated output bundle. No rendered output example is currently published in this repository. The commands below write into a separate sibling directory, outside the checkout. Keep generated revisions there; a publication example should be selected and documented separately.
 
 Requirements: Python 3.11+ and Blender. Tested on macOS with Python 3.14 and Blender 5.2. Other supported Blender/Python combinations still need testing.
+
+For first-time setup, run `python3 skills/brick-models/scripts/setup_runtime.py`. It reuses an existing Blender or downloads a checksum-pinned official portable copy, and installs Python dependencies in the current user's cache outside repositories. Use the Python and Blender paths it prints. macOS Apple Silicon, Linux x64 and Windows x64/ARM64 packages are implemented; the full clean setup and rendering flow has been tested on macOS Apple Silicon only. Unsupported platforms receive an actionable error. Python itself must already be available. See [first-run behavior](skills/brick-models/references/first-run.md).
 
 ```sh
 python3 -m venv .venv

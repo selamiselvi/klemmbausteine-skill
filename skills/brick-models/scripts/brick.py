@@ -10,12 +10,10 @@ import tempfile
 import zipfile
 from pathlib import Path
 from bricklib import CATALOG, ROOT, VERSION, VIEWS, dumps, ldraw, output_names, parts_csv, read_json, sha, validate
+from runtime import find_blender
 
 def blender_path(explicit=None):
-    choices=[explicit,os.environ.get('BLENDER_BIN'),shutil.which('blender'),'/Applications/Blender.app/Contents/MacOS/Blender']
-    for p in choices:
-        if p and Path(p).is_file():return str(Path(p).resolve())
-    raise ValueError('Blender not found. Install Blender and pass --blender PATH or set BLENDER_BIN.')
+    return find_blender(explicit)
 
 def doctor():
     modules={name:importlib.util.find_spec(name) is not None for name in ('reportlab','jsonschema','PIL')}
@@ -123,11 +121,18 @@ def build(args):
 
 def refresh_guide(args):
     source=Path(args.folder).resolve();old=inspect_bundle(source);m,r=checked_model(source/'model.json')
+    if getattr(args,'text_model',None):
+        from guide_language import replace_model_text
+        replacement,new_report=checked_model(args.text_model)
+        m=replace_model_text(m,replacement);r=new_report
     out=Path(args.out).expanduser().resolve()
     if out.exists():raise ValueError('Output already exists. Choose a new revision directory.')
     out.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.brick-guide-',dir=out.parent) as tmp:
         stage=Path(tmp)/'bundle';shutil.copytree(source,stage)
+        (stage/'model.json').write_text(dumps(m))
+        (stage/'model.ldr').write_text(ldraw(m))
+        (stage/'validation.json').write_text(dumps(r))
         from guide import export_steps,browser,pdf
         style=old.get('instruction_style','studio')
         if getattr(args,'instruction_style',None)=='technical' and style!='technical':
@@ -140,6 +145,30 @@ def refresh_guide(args):
         steps=export_steps(m,stage);browser(m,steps,stage,style);pdf(m,steps,r,stage,style)
         write_manifest(stage,m,old['quality'],style);inspect_bundle(stage);stage.rename(out)
     print(dumps({'output':str(out),'instruction_style':style,'rerendered':style!=old.get('instruction_style','studio')}))
+
+def localize_guide(args):
+    source=Path(args.folder).resolve();manifest=inspect_bundle(source)
+    from guide_language import translated_model
+    from guide import pdf
+    translation=read_json(args.translation)
+    m=translated_model(read_json(source/'model.json'),translation)
+    steps=read_json(source/'instructions/steps.json')['steps']
+    for step,translated in zip(steps,translation['steps']):step.update(translated)
+    dest=Path(args.out).expanduser().resolve()
+    if dest.suffix.lower()!='.pdf' or dest==source or source in dest.parents:
+        raise ValueError('Write the additional PDF outside the canonical bundle')
+    if dest.exists():raise ValueError('Output already exists')
+    if bool(args.font)!=bool(args.bold_font):raise ValueError('Supply both --font and --bold-font')
+    dest.parent.mkdir(parents=True,exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.brick-language-',dir=dest.parent) as tmp:
+        stage=Path(tmp)
+        # Reuse existing PNGs. No Blender process or geometry export is involved.
+        shutil.copytree(source/'renders',stage/'renders')
+        shutil.copytree(source/'instructions',stage/'instructions')
+        pdf(m,steps,read_json(source/'validation.json'),stage,manifest.get('instruction_style','studio'),
+            translation=translation,fonts_override=(args.font,args.bold_font) if args.font else None)
+        os.link(stage/'instructions.pdf',dest)
+    print(dumps({'pdf':str(dest),'language':translation['language'],'rerendered':False}))
 
 def pack(args):
     folder=Path(args.folder).resolve();inspect_bundle(folder);dest=Path(args.zip).expanduser().resolve()
@@ -167,8 +196,12 @@ def main():
     p.add_argument('--instruction-style',choices=['studio','technical'],default='studio')
     p=sub.add_parser('verify');p.add_argument('folder')
     p=sub.add_parser('refresh-guide');p.add_argument('folder');p.add_argument('--out',required=True)
+    p.add_argument('--text-model',help='Validated model with only title, description and step prose changed')
     p.add_argument('--instruction-style',choices=['technical']);p.add_argument('--blender');p.add_argument('--timeout',type=int,default=1800)
     p=sub.add_parser('pack');p.add_argument('folder');p.add_argument('--zip',required=True)
+    p=sub.add_parser('translation-template');p.add_argument('folder')
+    p=sub.add_parser('localize-guide');p.add_argument('folder');p.add_argument('--translation',required=True);p.add_argument('--out',required=True)
+    p.add_argument('--font');p.add_argument('--bold-font')
     a=parser.parse_args()
     try:
         if a.cmd=='doctor':return doctor()
@@ -178,6 +211,11 @@ def main():
         elif a.cmd=='build':build(a)
         elif a.cmd=='pack':pack(a)
         elif a.cmd=='refresh-guide':refresh_guide(a)
+        elif a.cmd=='localize-guide':localize_guide(a)
+        elif a.cmd=='translation-template':
+            inspect_bundle(a.folder)
+            from guide_language import translation_template
+            print(dumps(translation_template(read_json(Path(a.folder)/'model.json'))))
         elif a.cmd=='verify':print(dumps(inspect_bundle(a.folder)))
     except (ValueError,OSError,ImportError,subprocess.TimeoutExpired) as e:
         print(f'Error: {e}',file=sys.stderr);return 1

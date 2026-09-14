@@ -69,14 +69,26 @@ body{background:#fff}.layout{grid-template-columns:240px minmax(0,1fr);gap:32px}
         page=page.replace("el('view').textContent=s.view.replaceAll('-',' ');", "el('view').textContent=index>0&&s.view!==data.steps[index-1].view?'↻ '+s.view.replaceAll('-',' '):'';")
     (out/'instructions/index.html').write_text(page.replace('__TITLE__',html.escape(model['title'])).replace('__DATA__',payload))
 
-def pdf(model,steps,report,out,style='studio'):
+def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=None):
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import HexColor
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     import reportlab
+    from guide_language import LABELS
+    labels=translation['labels'] if translation else LABELS
+    part_name=lambda p: translation['part_names'][p['part_id']] if translation else p['part_name']
+    color_name=lambda p: translation['color_names'][p['color_id']] if translation else p['color_name']
     fonts=Path(reportlab.__file__).parent/'fonts'
-    for name,file in [('Body','Vera.ttf'),('Bold','VeraBd.ttf')]:pdfmetrics.registerFont(TTFont(name,str(fonts/file)))
+    font_files=fonts_override or (fonts/'Vera.ttf',fonts/'VeraBd.ttf')
+    for name,file in zip(('Body','Bold'),font_files):pdfmetrics.registerFont(TTFont(name,str(file)))
+    if translation:
+        all_text=[model['title'],model['description'],model['author'],*labels.values(),*translation['part_names'].values(),*translation['color_names'].values()]
+        all_text.extend(t for step in steps for t in (step['title'],step.get('note','')))
+        for font in ('Body','Bold'):
+            glyphs=pdfmetrics.getFont(font).face.charToGlyph
+            missing={char for text in all_text for char in text if not char.isspace() and ord(char) not in glyphs}
+            if missing:raise ValueError('PDF font lacks translation glyphs; supply compatible --font and --bold-font')
     c=canvas.Canvas(str(out/'instructions.pdf'),pagesize=(842,595),invariant=1)
     c.setTitle(model['title']);c.setAuthor(model['author']);ink=HexColor('#19394b');muted=HexColor('#637786');blue=HexColor('#006d9c')
     def text(x,y,t,size=11,font='Body',color=ink):
@@ -97,58 +109,63 @@ def pdf(model,steps,report,out,style='studio'):
         return lines+[line] if line else lines
     def footer(page):
         text(34,22,model['title'],9,color=muted);text(755,22,str(page),9,color=muted)
-    text(36,545,'BUILDING GUIDE',11,'Bold',blue)
+    text(36,545,labels['building_guide'],11,'Bold',blue)
     yy=468
-    for line in wrap(model['title'],310,36,'Bold'):text(36,yy,line,36,'Bold');yy-=43
-    text(36,yy-20,f'{len(model["parts"])} parts / {len(steps)} steps',13)
+    title_size=36
+    while title_size>20 and any(pdfmetrics.stringWidth(word,'Bold',title_size)>310 for word in model['title'].split()):title_size-=1
+    for line in wrap(model['title'],310,title_size,'Bold'):text(36,yy,line,title_size,'Bold');yy-=title_size*1.2
+    text(36,yy-20,labels['counts'].format(parts=len(model['parts']),steps=len(steps)),13)
     yy-=72
     for line in wrap(model['description'],285,11):text(36,yy,line,11,color=muted);yy-=17
-    text(36,108,'Digitally checked · not physically test-built',10,color=muted)
-    text(36,87,model['author'],10,color=muted)
+    status_lines=wrap(labels['digital_status'],285,10)
+    for i,line in enumerate(status_lines):text(36,108-i*13,line,10,color=muted)
+    text(36,108-len(status_lines)*13-8,model['author'],10,color=muted)
     c.drawImage(str(out/'renders/front-right.png'),350,75,455,455,preserveAspectRatio=True,mask='auto');footer(1);c.showPage()
     by={p['id']:p for p in model['parts']}
     if style=='technical':
+        title_x=max(110,36+pdfmetrics.stringWidth(f'{len(steps):02}','Bold',36)+20)
         for n,s in enumerate(steps,1):
             text(36,535,f'{n:02}',36,'Bold',blue)
-            for i,line in enumerate(wrap(s['title'],670,20,'Bold')):text(110,546-i*25,line,20,'Bold')
+            for i,line in enumerate(wrap(s['title'],805-title_x,20,'Bold')):text(title_x,546-i*25,line,20,'Bold')
             c.drawImage(str(out/'instructions'/s['image']),265,48,540,470,preserveAspectRatio=True,anchor='c',mask='auto')
-            text(36,479,'PARTS TO ADD',9,'Bold',muted)
+            text(36,479,labels['parts_to_add'],9,'Bold',muted)
             dense=len(s['parts'])>4;pitch=86 if dense else 112;icon_size=64 if dense else 80
             for i,p in enumerate(s['parts']):
                 x=36+(i%2)*112;y=(402 if dense else 382)-(i//2)*pitch
                 c.drawImage(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y+10,icon_size,icon_size,mask='auto')
                 text(x+81,y+44,f'{p["quantity"]}x',13,'Bold')
-                text(x,y,p['part_name'],9,'Bold')
+                text(x,y,part_name(p),9,'Bold')
                 text(x,y-13,p['part_id'],8,color=muted)
             yy=112
             if n>1 and s['view']!=steps[n-2]['view']:
-                text(36,yy,'TURN / '+s['view'].replace('-',' ').upper(),9,'Bold',blue);yy-=20
+                text(36,yy,labels['turn']+' / '+labels[s['view']].upper(),9,'Bold',blue);yy-=20
             if s['note']:
                 for line in wrap(s['note'],215,9):text(36,yy,line,9,color=muted);yy-=13
-            if n==1:text(36,54,'Blue edges: parts added in this step',8,color=blue)
+            if n==1:text(36,54,labels['new_edges'],8,color=blue)
             footer(n+1);c.showPage()
         inv=inventory(model['parts']);page=len(steps)+2
         for start in range(0,len(inv),12):
-            text(36,540,'Parts inventory',26,'Bold')
-            text(36,514,'LDraw IDs / color availability not checked',10,color=muted)
+            text(36,540,labels['inventory'],26,'Bold')
+            text(36,514,labels['availability'],10,color=muted)
             for i,p in enumerate(inv[start:start+12]):
                 x=36+(i%3)*258;y=388-(i//3)*112
                 c.drawImage(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y,94,94,mask='auto')
                 text(x+108,y+61,f'{p["quantity"]}x',18,'Bold')
-                text(x+108,y+42,p['part_name'],10,'Bold')
-                text(x+108,y+25,p['color_name'],9,color=muted)
+                text(x+108,y+42,part_name(p),10,'Bold')
+                text(x+108,y+25,color_name(p),9,color=muted)
                 text(x+108,y+10,p['part_id'],8,color=muted)
             footer(page);page+=1;c.showPage()
         c.save();return
+    title_x=max(106,34+pdfmetrics.stringWidth(f'{len(steps):02}','Bold',34)+20)
     for n,s in enumerate(steps,1):
         text(34,538,f'{n:02}',34,'Bold',blue)
-        title_lines=wrap(s['title'],650,20,'Bold')
-        for i,line in enumerate(title_lines):text(106,547-i*25,line,20,'Bold')
+        title_lines=wrap(s['title'],805-title_x,20,'Bold')
+        for i,line in enumerate(title_lines):text(title_x,547-i*25,line,20,'Bold')
         c.drawImage(str(out/'instructions'/s['image']),25,80,490,440,preserveAspectRatio=True,anchor='c',mask='auto')
-        text(555,496,'PARTS TO ADD',10,'Bold',blue);yy=473
+        text(555,496,labels['parts_to_add'],10,'Bold',blue);yy=473
         for p in s['parts']:
             c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.setStrokeColor(HexColor('#c5cdd2'));c.rect(555,yy-3,13,13,fill=1,stroke=1)
-            text(578,yy,f'{p["quantity"]} x {p["part_name"]}',10,'Bold');text(578,yy-13,f'{p["color_name"]} / {p["part_id"]}',8,color=muted);yy-=30
+            text(578,yy,f'{p["quantity"]} x {part_name(p)}',10,'Bold');text(578,yy-13,f'{color_name(p)} / {p["part_id"]}',8,color=muted);yy-=30
         # Vector top view shares the same coordinates as the SVG export.
         x0,y0,_,x1,y1,_=bbox(model);unit=min(210/(x1-x0),min(155,yy-145)/(y1-y0));ox=571;oy=125
         for x in range(x0,x1):text(ox+(x-x0+.5)*unit-2,oy+(y1-y0)*unit+8,str(x),7,color=muted)
@@ -160,20 +177,20 @@ def pdf(model,steps,report,out,style='studio'):
             source=by[p['instance']];w,d,_=shape(source);xx=ox+(p['x']-x0)*unit;yyy=oy+(p['y']-y0)*unit
             c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.setStrokeColor(ink);c.rect(xx+1,yyy+1,w*unit-2,d*unit-2,fill=1,stroke=1)
             cx=xx+w*unit/2;cy=yyy+d*unit/2;c.setFillColor(HexColor('#ffffff'));c.circle(cx,cy,6,fill=1,stroke=0);text(cx-2,cy-2,str(p['marker']),6,'Bold')
-        text(ox+60,oy-14,'FRONT',8,color=muted)
+        text(ox+60,oy-14,labels['front'],8,color=muted)
         # Compact explicit placement references are helpful for exact reconstruction.
         yy=96
         for line in wrap('  '.join(f'{p["marker"]}: ({p["x"]},{p["y"]},{p["z"]}) {p["rotation"]}°' for p in s['placements']),245,7):text(555,yy,line,7,color=muted);yy-=10
         if s['note']:
             for i,line in enumerate(wrap(s['note'],470,9)):text(36,65-i*12,line,9,color=muted)
-        text(36,78,s['view'].replace('-',' '),8,color=muted)
+        text(36,78,labels[s['view']],8,color=muted)
         footer(n+1);c.showPage()
     inv=inventory(model['parts']);page=len(steps)+2
     for start in range(0,len(inv),17):
-        text(36,540,'Parts inventory',26,'Bold');text(36,514,'LDraw IDs · color availability not checked',10,color=muted)
+        text(36,540,labels['inventory'],26,'Bold');text(36,514,labels['availability'],10,color=muted)
         yy=480
         for p in inv[start:start+17]:
             c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.rect(36,yy-3,13,13,fill=1,stroke=0)
-            text(65,yy,p['part_name'],11);text(270,yy,p['part_id'],11);text(390,yy,p['color_name'],11);text(700,yy,str(p['quantity']),12,'Bold');yy-=24
+            text(65,yy,part_name(p),11);text(270,yy,p['part_id'],11);text(390,yy,color_name(p),11);text(700,yy,str(p['quantity']),12,'Bold');yy-=24
         footer(page);page+=1;c.showPage()
     c.save()

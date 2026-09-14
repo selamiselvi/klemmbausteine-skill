@@ -11,15 +11,21 @@ The skill's source, documentation and canonical prompts are written in English. 
 
 ## Start
 
+Before design, follow [the first-run checks](references/first-run.md): confirm GPT-6 Astra from reliable current-session evidence, or ask the helper's single model question when unknown/different. Reuse a current confirmation. Automatic design intake does not skip this compatibility check; an explicit user override is respected. A skill cannot silently switch its host model.
+
 Accept a text description, a reference image, or both. If no subject has been supplied or delegated, start with: “Describe what you would like to build, or send a picture of it. I'll turn it into a brick model.” Translate this invitation into the user's language and keep the terminology brand-neutral. If text or an image already establishes the subject, use it without repeating this invitation or requiring the other input type. An image with “I want this” is sufficient; inspect it rather than asking the user to describe it again.
 
 Before designing a new model, follow [the short intake](references/intake.md). First offer “Start right away” or “Choose together” using `python scripts/intake.py`. If the user already says “just make it”, “you decide” or “no questions”, enter auto mode immediately and choose size/detail to suit the subject without asking the intake questions. In guided mode, ask only the missing size, detail and experience questions together and wait for answers. Reuse explicit preferences in either mode; no mode question is needed when all choices are already supplied. For revisions, retain the agreed choices and mode.
 
-Read [the model contract](references/format.md) before authoring a model. Run `python scripts/brick.py doctor` to check Python dependencies and Blender. Install requirements into a project-local virtual environment if missing; use the Blender path reported by doctor or supplied by the user.
+Read [the model contract](references/format.md) before authoring a model. Run `python scripts/brick.py doctor` to check Python dependencies and Blender. If missing, use `python scripts/setup_runtime.py` as described in the first-run checks; it creates a user-space runtime outside repositories and installs official Blender when needed. Use its returned Python and Blender paths.
+
+Keep the conversation in the user's language, but create the canonical model prose and all instructions in English. Briefly mention that English is the community default and an additional translated PDF is available on request. Follow [artifact language rules](references/language.md); do not mix languages or silently translate the English templates.
 
 Translate the resolved choices into a silhouette, scale, palette and parts budget. An image is a visual reference; reconstruct the assembly, not its pixels. Check the design against the intake targets before rendering; explain material deviations instead of quietly changing the requested scale or detail.
 
 ## Design and iterate
+
+For an identifiable real building/object, follow [reference research](references/research.md) before placing parts. Actually inspect multiple angles and relevant detail views, record private source/proportion notes, and compare the draft silhouette with the references. Scale research depth with the requested detail; one brochure is not sufficient coverage.
 
 Write `model.json` using the supported catalog returned by `python scripts/brick.py catalog`. Use [design guidance](references/design.md) for connection, sequencing and visibility choices. The agent designs the assembly; the exporter does not interpret prose or invent geometry.
 
@@ -34,6 +40,8 @@ Inspect all four renders and representative early/middle/late instruction pages 
 For a technical instruction variant, add `--instruction-style technical` to `build`. It preserves all part colors, marks new body edges blue, uses simple face shading without studio shadows, and shows actual part icons with quantities. Coordinates remain in the structured exports but are hidden in the PDF and browser guide. Compare this optional style with the creator before treating it as their preferred default.
 
 When only the guide layout or UI code changes, use `python scripts/brick.py refresh-guide OUTPUT --out NEW_OUTPUT` to regenerate PDF/HTML/maps while preserving the validated model and rendered images.
+
+For an English prose correction, add `--text-model ENGLISH_MODEL_JSON`; construction changes are rejected. For an additional translated PDF, use `translation-template` and `localize-guide` from the language reference. Both reuse the existing renders.
 
 To convert an existing studio guide, add `--instruction-style technical` to `refresh-guide`. It renders only the steps and part icons, preserving all four original hero PNGs byte for byte. A later refresh of a technical bundle preserves those images as well.
 
