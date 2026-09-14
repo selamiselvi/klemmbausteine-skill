@@ -32,6 +32,29 @@ class ModelTests(unittest.TestCase):
         m=small();m['parts'][1].update(z=0,x=20);self.assert_invalid(m,'disconnected')
     def test_future_support_does_not_count(self):
         m=small();m['steps'].reverse();self.assert_invalid(m,'earlier piece')
+    def test_large_connected_assembly_exceeds_previous_caps(self):
+        m=small();m['parts']=[];m['steps']=[]
+        for level in range(6):
+            offset=level%2
+            for x in range(offset,39,2):
+                for y in range(offset,39,2):
+                    m['parts'].append(dict(id=f"p{len(m['parts'])}",part='3003',color='71',x=x,y=y,z=level*3,rotation=0))
+        for start in range(0,len(m['parts']),4):
+            m['steps'].append(dict(title='Cross-bonded layer',parts=[p['id'] for p in m['parts'][start:start+4]]))
+        self.assertGreater(len(m['parts']),2000)
+        self.assertGreater(len(m['steps']),500)
+        result=validate(m)
+        self.assertTrue(result['passed'],result['errors'])
+        self.assertEqual(result['connection_components'],1)
+
+    def test_overhanging_bridge_blocks_later_insertion(self):
+        m=small()
+        m['parts']=[dict(id='a',part='3003',color='71',x=0,y=0,z=0,rotation=0),
+                    dict(id='bridge',part='3001',color='71',x=0,y=0,z=3,rotation=0),
+                    dict(id='b',part='3003',color='71',x=2,y=0,z=0,rotation=0)]
+        m['steps']=[dict(title='Build',parts=['a','bridge','b'])]
+        self.assert_invalid(m,'blocks insertion from above')
+
     def test_duplicate_step_assignment(self):
         m=small();m['steps'][1]['parts'].append('p1');self.assert_invalid(m,'occurs in')
     def test_unknown_step_part(self):

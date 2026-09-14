@@ -78,10 +78,18 @@ objects={p['id']:make_part(p) for p in model['parts']}
 bpy.ops.mesh.primitive_plane_add(size=200,location=(0,0,-.02))
 plane=bpy.context.object;plane.data.materials.append(white)
 plane.is_shadow_catcher=True
+# Scale the studio rig to the model so large assemblies remain evenly lit.
+min_x=min(p['x'] for p in model['parts'])*.8
+min_y=min(p['y'] for p in model['parts'])*.8
+max_x=max(p['x']+shape(p)[0] for p in model['parts'])*.8
+max_y=max(p['y']+shape(p)[1] for p in model['parts'])*.8
+model_height=max(p['z']+shape(p)[2] for p in model['parts'])*.32
+rig_center=Vector(((min_x+max_x)/2,(min_y+max_y)/2,0))
+rig_scale=max(max_x-min_x,max_y-min_y,model_height)/20
 for name,loc,power,size in [('Key',(-7,-9,20),1800,12),('Fill',(12,-2,12),1000,10),('Rim',(1,12,18),1500,8)]:
-    data=bpy.data.lights.new(name,'AREA');data.energy=power;data.shape='DISK';data.size=size
-    o=bpy.data.objects.new(name,data);scene.collection.objects.link(o);o.location=loc
-    o.rotation_euler=(Vector((3,3,4))-o.location).to_track_quat('-Z','Y').to_euler()
+    data=bpy.data.lights.new(name,'AREA');data.energy=power*rig_scale**2;data.shape='DISK';data.size=size*rig_scale
+    o=bpy.data.objects.new(name,data);scene.collection.objects.link(o);o.location=rig_center+Vector(loc)*rig_scale
+    o.rotation_euler=(rig_center+Vector((0,0,model_height*.4))-o.location).to_track_quat('-Z','Y').to_euler()
 cam_data=bpy.data.cameras.new('Camera');cam=bpy.data.objects.new('Camera',cam_data)
 scene.collection.objects.link(cam);scene.camera=cam;cam_data.type='ORTHO';cam_data.lens=50
 

@@ -60,10 +60,11 @@ def validate(model):
     for pid,n in Counter(ids).items():
         if n != 1: errors.append(f'Part occurs in {n} steps: {pid}')
     if errors: return report
-    cells={}; graph=defaultdict(set); top=defaultdict(list); collisions=set()
+    cells={}; graph=defaultdict(set); top=defaultdict(list); columns=defaultdict(list); collisions=set()
     for p in ps:
         w,d,h=shape(p)
         for x,y in footprint(p):
+            columns[(x,y)].append(p)
             top[(x,y,p['z']+h)].append(p['id'])
             for z in range(p['z'],p['z']+h):
                 cell=(x,y,z)
@@ -83,8 +84,8 @@ def validate(model):
             report['warnings'].append(f'{p["id"]}: {len(previous_support)}/{len(area)} footprint studs supported at placement; review overhang')
         # An existing brick above blocks vertical placement, even without body collision.
         for x,y in area:
-            for other in ps:
-                if order[other['id']] < order[p['id']] and other['z'] >= p['z']+shape(p)[2] and (x,y) in footprint(other):
+            for other in columns[(x,y)]:
+                if order[other['id']] < order[p['id']] and other['z'] >= p['z']+shape(p)[2]:
                     errors.append(f'{p["id"]}: earlier piece {other["id"]} blocks insertion from above')
                     break
             else: continue
