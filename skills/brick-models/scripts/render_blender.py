@@ -96,6 +96,10 @@ def frame(parts,view):
     dx,dy=VIEWS[view];cam.location=center+Vector((dx,dy,1))*25
     cam.rotation_euler=(center-cam.location).to_track_quat('-Z','Y').to_euler()
     rot=cam.rotation_euler.to_matrix().transposed();coords=[rot@(p-center) for p in bounds]
+    # Uneven skylines need the projected bounds centered, not the 3D box center.
+    offset=Vector(((min(v.x for v in coords)+max(v.x for v in coords))/2,
+                   (min(v.y for v in coords)+max(v.y for v in coords))/2,0))
+    cam.location+=rot.transposed()@offset
     cam_data.ortho_scale=max(max(v.x for v in coords)-min(v.x for v in coords),max(v.y for v in coords)-min(v.y for v in coords))*1.22
 
 def render(name,parts,view,size):
