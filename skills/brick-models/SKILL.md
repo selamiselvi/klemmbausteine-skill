@@ -9,6 +9,8 @@ Create an editable brick assembly, not an image that merely resembles bricks. Wo
 
 ## Start
 
+Accept a text description, a reference image, or both. If no subject has been supplied or delegated, start with: “Describe what you would like to build, or send a picture of it. I'll turn it into a brick model.” In German: “Beschreibe, was du bauen möchtest, oder schick ein Bild davon. Daraus mache ich ein Klemmbaustein-Modell.” Use equivalent wording in the user's language and brand-neutral terms such as “brick model” / “Klemmbaustein-Modell”. If text or an image already establishes the subject, use it without repeating this invitation or requiring the other input type. An image with “I want this” is sufficient; inspect it rather than asking the user to describe it again.
+
 Before designing a new model, follow [the short intake](references/intake.md). First offer “Start right away” or “Choose together” using `python scripts/intake.py`. If the user already says “just make it”, “you decide” or “no questions”, enter auto mode immediately and choose size/detail to suit the subject without asking the intake questions. In guided mode, ask only the missing size, detail and experience questions together and wait for answers. Reuse explicit preferences in either mode; no mode question is needed when all choices are already supplied. For revisions, retain the agreed choices and mode.
 
 Read [the model contract](references/format.md) before authoring a model. Run `python scripts/brick.py doctor` to check Python dependencies and Blender. Install requirements into a project-local virtual environment if missing; use the Blender path reported by doctor or supplied by the user.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Brick Models"
-  short_description: "Build brick models, renders and step-by-step guides"
-  default_prompt: "Use $brick-models to design a small brick model and produce renders, building instructions and a parts list."
+  short_description: "Turn text or images into brick models and building guides"
+  default_prompt: "Use $brick-models to turn my description or attached reference image into a brick model with renders, building instructions and a parts list."

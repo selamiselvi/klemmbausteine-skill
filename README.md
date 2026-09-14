@@ -6,9 +6,15 @@ A local agent skill for designing brick assemblies and producing four studio vie
 
 ## Use with your agent
 
-Install the skill folder at `skills/brick-models` with your agent's skill installer, or ask your agent to read its `SKILL.md` directly from this checkout. Then ask:
+Install the skill folder at `skills/brick-models` with your agent's skill installer, or ask your agent to read its `SKILL.md` directly from this checkout.
 
-> Use $brick-models to create a small brick lighthouse. Produce the model, four renders, a PDF building guide and a parts list. Inspect the result before offering to package it.
+Describe what you would like to build, or attach a reference image. Either is enough; you can also combine them.
+
+> Use $brick-models to create a small brick lighthouse. Just go ahead and choose the details.
+
+Or attach a picture and say:
+
+> Use $brick-models to turn this into a brick model. Just go ahead.
 
 The skill is self-contained in that folder. It contains no website administration tools or publishing credentials.
 
