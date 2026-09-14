@@ -12,6 +12,8 @@ Install the skill folder at `skills/brick-models` with your agent's skill instal
 
 The skill is self-contained in that folder. It contains no website administration tools or publishing credentials.
 
+Before designing a new model, the agent resolves three plain-language choices: size, amount of detail and building experience. Already supplied answers are reused. A small intake helper provides fixed questions and translates the choices into size/parts targets and instruction granularity; defaults are used only when the user asks the agent to decide. These are project-specific planning estimates, not official product categories or build-time guarantees. See [the intake workflow](skills/brick-models/references/intake.md).
+
 ## Run the source example locally
 
 `examples/coastal-light.json` is a reproducible input model, not a generated output bundle. No rendered output example is currently published in this repository. The commands below write into a separate sibling directory, outside the checkout. Keep generated revisions there; a publication example should be selected and documented separately.

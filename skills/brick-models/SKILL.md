@@ -9,9 +9,11 @@ Create an editable brick assembly, not an image that merely resembles bricks. Wo
 
 ## Start
 
+Before designing a new model, follow [the short intake](references/intake.md). Resolve three choices in order: size, detail and building experience. Use `python scripts/intake.py` to obtain the fixed questions and derive design targets from the answers. Reuse explicit answers from the brief; ask the remaining questions together in the user's language and wait for answers before authoring geometry. Only use defaults when the user explicitly delegates those decisions. For revisions, retain the agreed choices and ask only about a requested change.
+
 Read [the model contract](references/format.md) before authoring a model. Run `python scripts/brick.py doctor` to check Python dependencies and Blender. Install requirements into a project-local virtual environment if missing; use the Blender path reported by doctor or supplied by the user.
 
-Translate the brief into a silhouette, scale, palette and a sensible parts budget. Ask only about choices that materially change the result. For a first unspecified model, propose a compact design and proceed. An image is a visual reference; reconstruct the assembly, not its pixels.
+Translate the resolved choices into a silhouette, scale, palette and parts budget. An image is a visual reference; reconstruct the assembly, not its pixels. Check the design against the intake targets before rendering; explain material deviations instead of quietly changing the requested scale or detail.
 
 ## Design and iterate
 
