@@ -4,7 +4,6 @@ import argparse
 import json
 
 ORDER = ('size', 'detail', 'experience')
-DEFAULTS = dict(size='small', detail='balanced', experience='beginner')
 SIZE_CM = {'small': [8, 15], 'medium': [15, 25], 'large': [25, 40]}
 PART_RANGES = {
     'small': {'minimal': [40, 80], 'balanced': [80, 160], 'detailed': [160, 280]},
@@ -24,6 +23,10 @@ CHOICES = {
 }
 COPY = {
     'de': {
+        'mode': ('Wie möchtest du starten?', [
+            ('Direkt loslegen', 'Du entscheidest passend zu meinem Motiv.'),
+            ('Gemeinsam festlegen', 'Ich wähle Größe, Details und Bauschritte selbst.'),
+        ]),
         'size': ('Wie groß soll dein Modell ungefähr werden?', [
             ('Klein', 'Ungefähr handgroß; längste Seite etwa 8–15 cm.'),
             ('Mittel', 'Ein Modell fürs Regal; längste Seite etwa 15–25 cm.'),
@@ -41,6 +44,10 @@ COPY = {
         ]),
     },
     'en': {
+        'mode': ('How would you like to start?', [
+            ('Start right away', 'Choose what suits my subject.'),
+            ('Choose together', 'Let me choose size, detail and building steps.'),
+        ]),
         'size': ('Roughly how big would you like your model to be?', [
             ('Small', 'About hand-sized; longest dimension around 8–15 cm.'),
             ('Medium', 'A shelf model; longest dimension around 15–25 cm.'),
@@ -60,31 +67,43 @@ COPY = {
 }
 
 
-def resolve(answers, language='en', use_defaults=False):
+def resolve(answers, language='en', mode=None, decisions=None):
     if language not in COPY:
         raise ValueError('Unsupported question language')
-    if set(answers) - set(ORDER):
-        raise ValueError('Unknown intake field')
+    if mode not in (None, 'auto', 'guided'):
+        raise ValueError('Unknown intake mode')
+    decisions = {} if decisions is None else decisions
+    if decisions and mode != 'auto':
+        raise ValueError('Agent choices require auto mode')
+    for values in (answers, decisions):
+        if set(values) - set(ORDER):
+            raise ValueError('Unknown intake field')
+        for key, value in values.items():
+            if value is not None and value not in CHOICES[key]:
+                raise ValueError(f'Unknown choice for {key}')
     selected = {key: value for key, value in answers.items() if value is not None}
-    for key, value in selected.items():
-        if value not in CHOICES[key]:
-            raise ValueError(f'Unknown choice for {key}')
     assumed = {}
-    if use_defaults:
-        assumed = {key: DEFAULTS[key] for key in ORDER if key not in selected}
+    if mode == 'auto':
+        assumed = {key: value for key, value in decisions.items() if value is not None and key not in selected}
+        # Clear instructions are a presentation choice, not a claim about the user's experience.
+        if 'experience' not in selected and 'experience' not in assumed:
+            assumed['experience'] = 'beginner'
         selected.update(assumed)
+    missing = [key for key in ORDER if key not in selected]
     questions = []
-    for key in ORDER:
-        if key in selected:
-            continue
+    question_keys = ['mode'] if missing and mode is None else (missing if mode == 'guided' else [])
+    for key in question_keys:
         title, labels = COPY[language][key]
         questions.append(dict(id=key, question=title, options=[
             dict(id=choice, label=label, description=description)
-            for choice, (label, description) in zip(CHOICES[key], labels)
+            for choice, (label, description) in zip(('auto', 'guided') if key == 'mode' else CHOICES[key], labels)
         ]))
-    result = dict(schema_version='1.0', status='needs_answers' if questions else 'ready',
+    status = 'needs_answers' if questions else ('needs_agent_choices' if missing else 'ready')
+    result = dict(schema_version='1.1', mode=mode, status=status,
                   answers=selected, assumptions=assumed, questions=questions)
-    if not questions:
+    if mode == 'auto' and missing:
+        result['missing_choices'] = missing
+    if not missing:
         size, detail, experience = (selected[key] for key in ORDER)
         result['targets'] = dict(
             longest_dimension_cm=SIZE_CM[size][:],
@@ -99,12 +118,17 @@ def resolve(answers, language='en', use_defaults=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--language', choices=tuple(COPY), default='en')
+    parser.add_argument('--mode', choices=('auto', 'guided'))
     for key in ORDER:
         parser.add_argument('--' + key, choices=CHOICES[key])
-    parser.add_argument('--defaults', action='store_true', help='Only after the user delegates unanswered choices')
+        parser.add_argument('--choose-' + key, choices=CHOICES[key], help='Agent decision in auto mode')
     args = parser.parse_args()
-    print(json.dumps(resolve({key: getattr(args, key) for key in ORDER}, args.language, args.defaults),
-                     ensure_ascii=False, indent=2))
+    try:
+        result = resolve({key: getattr(args, key) for key in ORDER}, args.language, args.mode,
+                         {key: getattr(args, 'choose_' + key) for key in ORDER if getattr(args, 'choose_' + key) is not None})
+    except ValueError as error:
+        parser.error(str(error))
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':

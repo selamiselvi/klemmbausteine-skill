@@ -9,7 +9,7 @@ Create an editable brick assembly, not an image that merely resembles bricks. Wo
 
 ## Start
 
-Before designing a new model, follow [the short intake](references/intake.md). Resolve three choices in order: size, detail and building experience. Use `python scripts/intake.py` to obtain the fixed questions and derive design targets from the answers. Reuse explicit answers from the brief; ask the remaining questions together in the user's language and wait for answers before authoring geometry. Only use defaults when the user explicitly delegates those decisions. For revisions, retain the agreed choices and ask only about a requested change.
+Before designing a new model, follow [the short intake](references/intake.md). First offer “Start right away” or “Choose together” using `python scripts/intake.py`. If the user already says “just make it”, “you decide” or “no questions”, enter auto mode immediately and choose size/detail to suit the subject without asking the intake questions. In guided mode, ask only the missing size, detail and experience questions together and wait for answers. Reuse explicit preferences in either mode; no mode question is needed when all choices are already supplied. For revisions, retain the agreed choices and mode.
 
 Read [the model contract](references/format.md) before authoring a model. Run `python scripts/brick.py doctor` to check Python dependencies and Blender. Install requirements into a project-local virtual environment if missing; use the Blender path reported by doctor or supplied by the user.
 
@@ -19,7 +19,7 @@ Translate the resolved choices into a silhouette, scale, palette and parts budge
 
 Write `model.json` using the supported catalog returned by `python scripts/brick.py catalog`. Use [design guidance](references/design.md) for connection, sequencing and visibility choices. The agent designs the assembly; the exporter does not interpret prose or invent geometry.
 
-This first engine supports upright rectangular bricks and plates at integer stud/plate coordinates, with 0/90-degree rotation. If a brief needs slopes, hinges, curved parts or sideways connections, explain that limitation and agree on a simplified interpretation or extend and test the engine. Never silently substitute unsupported parts or claim general CAD/physics validation.
+This first engine supports upright rectangular bricks and plates at integer stud/plate coordinates, with 0/90-degree rotation. If a brief needs slopes, hinges, curved parts or sideways connections, explain that limitation. In guided mode clarify an important simplification; in auto mode choose and state a reasonable stylization unless it contradicts an explicit requirement. Extending the engine requires implementation and testing. Never silently substitute unsupported parts or claim general CAD/physics validation.
 
 Run `python scripts/brick.py validate MODEL`. Fix errors in the source. Consider warnings about support and temporary loose foundation pieces. Keep each numbered step small and its title meaningful.
 

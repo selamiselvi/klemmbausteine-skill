@@ -11,19 +11,20 @@ class IntakeTests(unittest.TestCase):
     def test_no_silent_defaults_or_plan_before_answers(self):
         result = resolve({})
         self.assertEqual(result['status'], 'needs_answers')
-        self.assertEqual([q['id'] for q in result['questions']], list(ORDER))
+        self.assertEqual([q['id'] for q in result['questions']], ['mode'])
+        self.assertEqual([o['id'] for o in result['questions'][0]['options']], ['auto', 'guided'])
         self.assertEqual(result['answers'], {})
         self.assertEqual(result['assumptions'], {})
         self.assertNotIn('targets', result)
 
     def test_partial_answers_are_preserved_and_not_asked_again(self):
-        result = resolve({'size': 'large', 'experience': 'beginner'})
+        result = resolve({'size': 'large', 'experience': 'beginner'}, mode='guided')
         self.assertEqual([q['id'] for q in result['questions']], ['detail'])
         self.assertNotIn('targets', result)
         self.assertEqual(result['answers']['size'], 'large')
 
-    def test_delegated_defaults_never_override_explicit_choices(self):
-        result = resolve({'size': 'large', 'detail': 'detailed'}, use_defaults=True)
+    def test_auto_decisions_never_override_explicit_choices(self):
+        result = resolve({'size': 'large', 'detail': 'detailed'}, mode='auto', decisions={'size': 'small'})
         self.assertEqual(result['assumptions'], {'experience': 'beginner'})
         self.assertEqual(result['targets']['suggested_part_count'], [900, 1400])
         self.assertEqual(result['targets']['max_new_parts_per_step'], 4)
@@ -48,7 +49,8 @@ class IntakeTests(unittest.TestCase):
 
     def test_languages_preserve_question_and_option_meanings(self):
         for language in ('de', 'en'):
-            questions = resolve({}, language)['questions']
+            questions = resolve({}, language, mode='guided')['questions']
+            self.assertEqual([q['id'] for q in questions], list(ORDER))
             for q in questions:
                 self.assertEqual([o['id'] for o in q['options']], list(CHOICES[q['id']]))
         answers = dict(size='small', detail='minimal', experience='beginner')
@@ -58,6 +60,37 @@ class IntakeTests(unittest.TestCase):
         for answers in ({'size': 'huge'}, {'unexpected': 'value'}, {'detail': ''}):
             with self.assertRaises(ValueError):
                 resolve(answers)
+
+    def test_auto_mode_waits_for_agent_decisions_not_user_answers(self):
+        result = resolve({}, mode='auto')
+        self.assertEqual(result['status'], 'needs_agent_choices')
+        self.assertEqual(result['questions'], [])
+        self.assertEqual(result['missing_choices'], ['size', 'detail'])
+        self.assertNotIn('targets', result)
+
+    def test_auto_mode_supports_subject_specific_choices(self):
+        result = resolve({}, mode='auto', decisions={'size': 'medium', 'detail': 'balanced'})
+        self.assertEqual(result['status'], 'ready')
+        self.assertEqual(result['targets']['longest_dimension_cm'], [15, 25])
+        self.assertEqual(result['targets']['suggested_part_count'], [220, 450])
+        self.assertEqual(result['questions'], [])
+
+    def test_switch_to_auto_preserves_partial_guided_answers(self):
+        result = resolve({'size': 'small'}, mode='auto', decisions={'size': 'medium', 'detail': 'detailed'})
+        self.assertEqual(result['answers']['size'], 'small')
+        self.assertEqual(result['answers']['detail'], 'detailed')
+        self.assertNotIn('size', result['assumptions'])
+        self.assertEqual(result['status'], 'ready')
+
+    def test_complete_brief_skips_mode_question(self):
+        result = resolve(dict(size='small', detail='minimal', experience='experienced'))
+        self.assertEqual(result['questions'], [])
+        self.assertEqual(result['status'], 'ready')
+
+    def test_agent_decisions_require_auto_mode(self):
+        for mode in (None, 'guided', 'unknown'):
+            with self.assertRaises(ValueError):
+                resolve({}, mode=mode, decisions={'size': 'medium'})
 
 
 if __name__ == '__main__':

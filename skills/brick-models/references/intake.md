@@ -1,18 +1,27 @@
 # Short intake before model design
 
-The three required choices are size, detail and building experience, in that order. `scripts/intake.py` is the single source of question wording, option IDs and numeric design targets. It uses only Python's standard library and writes JSON to stdout; no installation, network call or output folder is needed to ask these questions.
+Start with a choice between automatic and guided planning. Both routes resolve size, detail and instruction granularity. `scripts/intake.py` is the single source of question wording, option IDs and numeric design targets. It uses only Python's standard library and writes JSON to stdout; no installation, network call or output folder is needed.
 
 ## Conversation
 
-1. Establish the subject from the user's text or image. If no subject is given, ask what they want to build. Do not infer a subject from the intake defaults.
-2. Reuse explicit choices already given in the conversation. A request for a small lighthouse answers size, but says nothing about the user's experience. An image alone does not establish physical size, detail preference or experience.
-3. Run the helper with known choices, for example `python scripts/intake.py --language de --size small`. Present its remaining questions together in the returned order, using the returned labels and descriptions. Use the host's question UI when available, otherwise a short numbered list. For languages other than English or German, translate the English wording without changing the choices or their meanings. Do not expose internal IDs or ask the user for stud counts, render settings, file formats or exact part counts.
-4. Wait for the missing answers. Partial answers remove only the corresponding questions. Ambiguous answers need clarification only for the affected choice. A preselected UI option, silence or elapsed time is not an answer.
-5. Run the helper again with all resolved choices. Briefly state the intended model in everyday language and proceed; this is not another confirmation gate. Use the returned targets during design and instruction planning.
+1. Establish the subject from the user's text or image. If none is given, ask what they want to build, unless they also explicitly delegate the subject.
+2. Reuse explicit preferences and mode choices already given. “Just make it”, “you decide”, “skip the questions” and equivalent wording select auto mode immediately. A request to work through the choices selects guided mode. Do not ask the mode question again when intent is already clear. When all three preferences are supplied, proceed directly.
+3. Otherwise run the helper with known choices, for example `python scripts/intake.py --language de --size small`. Its only question is “How would you like to start?” with two options. Wait for this choice before showing any detailed questions. Silence or a preselected option is not consent to a mode.
+4. In guided mode, call the helper with `--mode guided` and known answers. Present only its remaining questions together in the returned order: size, detail, experience. Wait for answers, preserving partial answers. Use the host's question UI when available, otherwise a short numbered list. For other languages, translate the English copy without changing the choices. Do not expose internal IDs or ask for stud counts, render settings, file formats or exact part counts.
+5. In auto mode, choose the missing preferences internally from the subject and brief, then call the helper with `--mode auto`. Pass user-supplied choices as `--size`, `--detail`, `--experience` and your decisions as `--choose-size`, `--choose-detail`, `--choose-experience`. The helper never returns user questions in this mode. `needs_agent_choices` means **you** still need to decide the listed fields; do not forward that request to the user.
+6. Once ready, briefly state the intended model in everyday language and proceed. Do not turn the summary into a second confirmation gate. Retain the resolved profile in working context and use its targets during design and instruction planning.
 
-If the user explicitly says to choose for them, `--defaults` fills only unanswered choices with small / balanced / beginner. State those assumptions briefly. It must not replace preferences they already supplied. Revisions retain previous choices unless the user changes them; do not restart onboarding for a color or layout adjustment.
+The user may switch to auto mode halfway through the questionnaire. Keep all answers already supplied and decide only the remainder. Revisions retain previous choices and mode; do not restart onboarding for a color or layout adjustment.
 
-Free-text preferences and explicit limits override presets. For example, a precise height or a maximum number of pieces remains a constraint even if it differs from the nearest profile. Retain these overrides with the working brief outside the skill repository and outside the exported bundle. Do not add unrecognized fields to `model.json`. If preferences conflict, ask about that tradeoff only; do not silently lower detail or increase size.
+## Choosing on the user's behalf
+
+Choose the smallest practical scale that leaves the subject's defining features legible. A simple single object may suit small; an assembly with multiple roofs, towers or a courtyard may need medium. Use large when the brief or composition warrants it, not merely because questions were skipped. Balanced detail is a useful starting point, but simplify or enrich it to match the actual subject. Avoid a fixed small/balanced profile for every request and avoid rigid subject-name lookup tables.
+
+For example, “Just make a Japanese temple” could warrant a medium model with balanced detail to leave room for a recognizable layered roof, columns and entrance. This is a design judgment, not a mandatory temple preset. A request for a tiny temple retains the small scale. Work within supported geometry; in auto mode, choose and briefly state a reasonable stylized interpretation instead of asking routine design questions.
+
+If experience is unknown, the helper uses beginner-friendly steps as a presentation choice; do not claim the user is a beginner. Size and detail still depend on the motif. `--mode auto --choose-size medium --choose-detail balanced` therefore yields medium/balanced targets with clear small steps. Auto mode does not fill size and detail with universal defaults.
+
+Free-text preferences and explicit limits override presets and agent decisions. A precise height or a maximum number of pieces remains a constraint even if it differs from the nearest profile. Retain these overrides with the working brief outside the skill repository and outside the exported bundle. Do not add unrecognized fields to `model.json`. Auto mode delegates ordinary design decisions, not permission to ignore constraints. Ask only if a missing essential input or incompatible explicit requirements actually prevent a workable interpretation.
 
 ## Design targets
 
@@ -20,8 +29,8 @@ The helper's size ranges describe the **longest outer dimension**, including the
 
 Size changes physical scale. Detail changes the number of distinctive features and the parts budget at that scale. Experience changes instruction granularity and how carefully small or obscured placements are separated. Beginner does not automatically mean small or simplified; experienced does not waive connection checks or justify hidden placements. The returned maximum parts per step is a ceiling, not a target to fill.
 
-A highly detailed model still uses the currently supported rectangular parts. This choice does not enable slopes, curves, moving mechanisms or realistic CAD fidelity. If a distinctive requested feature cannot be represented, explain the specific limitation and resolve its interpretation before designing it.
+A highly detailed model still uses the currently supported rectangular parts. This choice does not enable slopes, curves, moving mechanisms or realistic CAD fidelity. Explain a material limitation honestly. Guided mode can clarify an important interpretation; auto mode should choose a reasonable stylization unless it would contradict an explicit requirement.
 
 Before rendering, compare actual dimensions, part count and step granularity against the resolved targets. Minor variation is acceptable when it improves the model; explain a material departure and resolve a conflict with an explicit user constraint before continuing. The helper standardizes intake and planning, not the exact geometry that an agent will invent.
 
-Colors, a special feature, or an existing parts collection are conditional follow-ups only when they would materially change the design. Otherwise choose a suitable restrained palette and avoid extending the initial questionnaire.
+In guided mode, colors, a special feature or an existing parts collection are conditional follow-ups only when they would materially change the design. In auto mode choose these yourself unless explicitly constrained. Avoid extending the questionnaire for routine design choices.
