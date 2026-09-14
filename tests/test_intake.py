@@ -47,14 +47,11 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(a['suggested_part_count'], b['suggested_part_count'])
         self.assertLess(a['max_new_parts_per_step'], b['max_new_parts_per_step'])
 
-    def test_languages_preserve_question_and_option_meanings(self):
-        for language in ('de', 'en'):
-            questions = resolve({}, language, mode='guided')['questions']
-            self.assertEqual([q['id'] for q in questions], list(ORDER))
-            for q in questions:
-                self.assertEqual([o['id'] for o in q['options']], list(CHOICES[q['id']]))
-        answers = dict(size='small', detail='minimal', experience='beginner')
-        self.assertEqual(resolve(answers, 'de')['targets'], resolve(answers, 'en')['targets'])
+    def test_question_ids_are_stable_for_agent_translation(self):
+        questions = resolve({}, mode='guided')['questions']
+        self.assertEqual([q['id'] for q in questions], list(ORDER))
+        for q in questions:
+            self.assertEqual([o['id'] for o in q['options']], list(CHOICES[q['id']]))
 
     def test_unknown_choices_are_rejected(self):
         for answers in ({'size': 'huge'}, {'unexpected': 'value'}, {'detail': ''}):

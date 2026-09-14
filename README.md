@@ -18,6 +18,8 @@ Or attach a picture and say:
 
 The skill is self-contained in that folder. It contains no website administration tools or publishing credentials.
 
+The repository and canonical prompts are written in English. Use the skill in your own language; the agent translates the conversation and questions while keeping the same planning choices and targets.
+
 Before designing a new model, the agent offers “Start right away” or “Choose together”. Saying “just make it” skips even this question: the agent chooses size and detail to suit the subject and proceeds. Guided mode asks about size, detail and building experience, reusing answers already given. A small intake helper provides fixed questions and turns the selected profile into size/parts targets and instruction granularity. These are project-specific planning estimates, not official product categories or build-time guarantees. See [the intake workflow](skills/brick-models/references/intake.md).
 
 ## Run the source example locally
