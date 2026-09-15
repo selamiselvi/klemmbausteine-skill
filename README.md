@@ -70,7 +70,7 @@ This variant retains all brick colors, uses blue edges for new additions, replac
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Packaging is a local operation, not publication. After choosing to submit, the creator uploads the ZIP to WeTransfer or another transfer service and emails its download link. A community address will be provided when the website launches.
+Packaging is a local operation, not publication. After choosing to submit, the creator uploads the ZIP to WeTransfer or another transfer service. The skill prepares an English email draft, or copyable text, with the download link, chosen credit and a specific publication permission for the creator to review and send. This does not automatically license the model as open source. See [email submission](skills/brick-models/references/submission.md). A community address and operator details will be provided when the website launches.
 
 ## Output contract and checks
 
