@@ -6,7 +6,7 @@
 - Keep generated models, renders, PDFs, ZIPs, review images and development revisions outside this repository and outside the website repository. Use a separate sibling working directory; `.gitignore` is not a substitute for this separation.
 - `examples/` currently contains reproducible source inputs only. Add a finished output example only after the owner explicitly selects it for publication; document that single example and exclude development revisions from Git history.
 - Deterministic exporters and validators enforce the output contract. Agent prose alone is not sufficient.
-- The skill may package results for voluntary submission and explain the download-link/email process. It must not contain the website's importer, admin UI or publishing access.
-- Ask the creator whether they want to submit only after the result is ready. Do not automatically send messages or publish their work.
+- This release is owner-maintained distribution only: do not invite external contributions, pull requests or model submissions. The skill may package local results when requested. It must not contain the website's importer, admin UI or publishing access.
+- Community submission is disabled until the owner explicitly opens it. Do not prompt for submissions, send messages or publish work.
 - Do not claim physical build verification from digital checks alone.
 - The scaffold is not an implemented skill. Do not document installation or generation commands as working until tested.

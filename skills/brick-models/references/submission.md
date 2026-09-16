@@ -1,4 +1,6 @@
-# Voluntary email submission
+# Optional future email submission
+
+**Not active in this release.** Do not invite submissions or create an addressed submission draft until the owner explicitly opens a service with a verified operator and destination.
 
 Read this only after the finished model's creator chooses to submit it. The creator uploads a ZIP to WeTransfer or another transfer service and emails its download link for manual review. Submission does not guarantee acceptance or immediate publication.
 

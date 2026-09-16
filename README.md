@@ -16,15 +16,15 @@ Or attach a picture and say:
 
 > Use $brick-models to turn this into a brick model. Just go ahead.
 
-The skill is self-contained in that folder. It contains no website administration tools or publishing credentials.
+The skill is self-contained in that folder. It contains no website administration tools or publishing credentials. Updates are published only by the repository owner.
 
 The repository and canonical prompts are written in English. Use the skill in your own language; the agent translates the conversation and questions while keeping the same planning choices and targets.
 
 The design workflow targets **GPT-6 Astra**. The agent checks reliable current-session model information when available; otherwise it asks once whether Astra is selected. A different model prompts a switch request. The skill cannot switch models itself or reliably infer the active model from global defaults. An explicit choice to continue with another model is respected.
 
-For real buildings, the agent researches multiple views and defining details before designing, then compares the draft with those references. Research notes and reference photos stay outside the generated community bundle.
+For real buildings, the agent researches multiple views and defining details before designing, then compares the draft with those references. Research notes and reference photos stay outside the generated bundle.
 
-Community outputs are consistently **English**, including step titles and notes. On request, the agent can produce an additional fully translated PDF using the existing images; no Blender rerender is needed. The English bundle stays intact. See [language handling](skills/brick-models/references/language.md).
+Canonical outputs are consistently **English**, including step titles and notes. On request, the agent can produce an additional fully translated PDF using the existing images; no Blender rerender is needed. The English bundle stays intact. See [language handling](skills/brick-models/references/language.md).
 
 Before designing a new model, the agent offers “Start right away” or “Choose together”. Saying “just make it” skips even this question: the agent chooses size and detail to suit the subject and proceeds. Guided mode asks about size, detail and building experience, reusing answers already given. A small intake helper provides fixed questions and turns the selected profile into size/parts targets and instruction granularity. These are project-specific planning estimates, not official product categories or build-time guarantees. See [the intake workflow](skills/brick-models/references/intake.md).
 
@@ -36,27 +36,29 @@ Requirements: Python 3.11+ and Blender. Tested on macOS with Python 3.14 and Ble
 
 For first-time setup, run `python3 skills/brick-models/scripts/setup_runtime.py`. It reuses an existing Blender or downloads a checksum-pinned official portable copy, and installs Python dependencies in the current user's cache outside repositories. Use the Python and Blender paths it prints. macOS Apple Silicon, Linux x64 and Windows x64/ARM64 packages are implemented; the full clean setup and rendering flow has been tested on macOS Apple Silicon only. Unsupported platforms receive an actionable error. Python itself must already be available. See [first-run behavior](skills/brick-models/references/first-run.md).
 
+For a manual Python environment instead, keep it outside the checkout:
+
 ```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r skills/brick-models/requirements.txt
-.venv/bin/python skills/brick-models/scripts/brick.py doctor
-.venv/bin/python skills/brick-models/scripts/brick.py build examples/coastal-light.json --out ../brick-models-output/coastal-light/studio
+python3 -m venv ../brick-models-runtime
+../brick-models-runtime/bin/python -m pip install -r skills/brick-models/requirements.txt
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py doctor
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py build examples/coastal-light.json --out ../brick-models-output/coastal-light/studio
 ```
 
-On Windows, use the virtual environment's `Scripts/python.exe`. Supply `--blender /path/to/blender` or set `BLENDER_BIN` if Blender is not found automatically. The tool recognizes the standard macOS application path.
+On Windows, use `../brick-models-runtime/Scripts/python.exe`. Supply `--blender /path/to/blender` or set `BLENDER_BIN` if Blender is not found automatically. The tool recognizes the standard macOS application path.
 
 Open `../brick-models-output/coastal-light/studio/instructions/index.html` directly in a browser. The guide works offline without a web server. The bundle also contains `instructions.pdf`, `parts.csv`, `model.json`, `model.ldr` and four PNG renders. LDraw viewing requires an external official parts library; no LDraw meshes are bundled here.
 
 Use `--quality draft` for lower-resolution iteration. Existing output directories are never overwritten. To apply guide-layout changes without rerendering the model:
 
 ```sh
-.venv/bin/python skills/brick-models/scripts/brick.py refresh-guide ../brick-models-output/coastal-light/studio --out ../brick-models-output/coastal-light/layout-preview
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py refresh-guide ../brick-models-output/coastal-light/studio --out ../brick-models-output/coastal-light/layout-preview
 ```
 
 To compare an optional technical guide with the same model and untouched hero renders:
 
 ```sh
-.venv/bin/python skills/brick-models/scripts/brick.py refresh-guide ../brick-models-output/coastal-light/studio --out ../brick-models-output/coastal-light/technical --instruction-style technical
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py refresh-guide ../brick-models-output/coastal-light/studio --out ../brick-models-output/coastal-light/technical --instruction-style technical
 ```
 
 This variant retains all brick colors, uses blue edges for new additions, replaces studio lighting with simple face tones, and shows rendered part icons and quantities. Coordinate maps stay in the bundle data but are hidden in the guide. For new models, `build --instruction-style technical` produces this style directly. It is currently an alternative for visual comparison; the default remains the original studio guide.
@@ -64,13 +66,17 @@ This variant retains all brick colors, uses blue edges for new additions, replac
 ## Validate and package
 
 ```sh
-.venv/bin/python skills/brick-models/scripts/brick.py validate examples/coastal-light.json
-.venv/bin/python skills/brick-models/scripts/brick.py verify ../brick-models-output/coastal-light/studio
-.venv/bin/python skills/brick-models/scripts/brick.py pack ../brick-models-output/coastal-light/studio --zip ../brick-models-output/coastal-light/studio.zip
-.venv/bin/python -m unittest discover -s tests -v
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py validate examples/coastal-light.json
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py verify ../brick-models-output/coastal-light/studio
+../brick-models-runtime/bin/python skills/brick-models/scripts/brick.py pack ../brick-models-output/coastal-light/studio --zip ../brick-models-output/coastal-light/studio.zip
+../brick-models-runtime/bin/python -m unittest discover -s tests -v
 ```
 
-Packaging is a local operation, not publication. After choosing to submit, the creator uploads the ZIP to WeTransfer or another transfer service. The skill prepares an English email draft, or copyable text, with the download link, chosen credit and a specific publication permission for the creator to review and send. This does not automatically license the model as open source. See [email submission](skills/brick-models/references/submission.md). A community address and operator details will be provided when the website launches.
+Packaging creates a local ZIP, not a submission or publication. This release does not accept community model submissions and has no upload or email-submission workflow. The optional [email template](skills/brick-models/references/submission.md) is reserved for a future service with a verified operator, destination and explicit creator permission.
+
+## Maintenance
+
+This repository distributes the skill and is maintained solely by its owner. External pull requests, issues and model submissions are not accepted. Only the owner publishes official updates; forks do not update this repository, the website or official downloads. This maintenance policy does not change any rights granted by an applicable license.
 
 ## Output contract and checks
 
@@ -78,8 +84,14 @@ The [versioned format](skills/brick-models/references/format.md) defines model c
 
 Checks cover schema, unique instances, step coverage, body intersections, vertical stud connections, placement order and final connectivity. The generated reports keep physical-build and visual-review status unverified. They do not prove stability, clutch strength, market availability or all assembly motions. Rendered brick meshes are original dimensional approximations, including simplified undersides.
 
-Manifest hashes detect file changes; they are not an authenticity signature. Community imports must independently validate submitted packages.
+Manifest hashes detect file changes; they are not an authenticity signature or proof that HTML/PDF files are safe. `verify` checks locally generated bundles, not hostile uploads. There is no ZIP importer in this release. A future importer must enforce archive path, file count and decompressed-size limits and must never execute submitted content.
+
+## Third-party tools
+
+Blender is downloaded separately from its official distribution and retains its [GNU GPL license](https://www.blender.org/about/license/). Python dependencies retain their own licenses; they are installed into an external environment, not vendored in this repository. The renderer creates its own simplified brick geometry. `model.ldr` references part IDs but includes no LDraw library meshes. An external [LDraw Parts Library](https://ldraw.org/docs-main/licenses/legal-info.html) has its own per-file terms; those still apply if its geometry is redistributed. Using these tools does not automatically assign the skill’s license to a creator’s model or artwork.
 
 ## License
 
-License selection is pending. MIT is proposed for the skill and tools. Model-sharing licenses are separate; the example currently uses `UNLICENSED`. This is a development version, not a completed open-source release.
+The skill, tools, tests and documentation are open-source software under the [MIT License](LICENSE), copyright © 2026 Selami Selvi. The installable skill folder includes its own copy of the license.
+
+Model and artwork rights are separate: the software license does not automatically license generated outputs, the website or klemm branding. Only the source example [Coastal Light](examples/README.md) is separately licensed under [CC BY 4.0](examples/LICENSE.txt), with attribution to Selami Selvi. Third-party software and geometry retain their own license terms.

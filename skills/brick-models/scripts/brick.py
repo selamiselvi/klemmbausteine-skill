@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from bricklib import CATALOG, ROOT, VERSION, VIEWS, dumps, ldraw, output_names, parts_csv, read_json, sha, validate
-from runtime import find_blender
+from runtime import find_blender, output_path
 
 def blender_path(explicit=None):
     return find_blender(explicit)
@@ -96,8 +96,8 @@ def inspect_bundle(folder):
     return manifest
 
 def build(args):
+    out=output_path(args.out)
     m,r=checked_model(args.model);blender=blender_path(args.blender)
-    out=Path(args.out).expanduser().resolve()
     if out.exists():raise ValueError('Output already exists. Choose a new revision directory.')
     out.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.brick-build-',dir=out.parent) as tmp:
@@ -120,12 +120,12 @@ def build(args):
     print(dumps({'output':str(out),'part_count':len(m['parts']),'step_count':len(steps),'warnings':r['warnings'],'guide':str(out/'instructions/index.html')}))
 
 def refresh_guide(args):
+    out=output_path(args.out)
     source=Path(args.folder).resolve();old=inspect_bundle(source);m,r=checked_model(source/'model.json')
     if getattr(args,'text_model',None):
         from guide_language import replace_model_text
         replacement,new_report=checked_model(args.text_model)
         m=replace_model_text(m,replacement);r=new_report
-    out=Path(args.out).expanduser().resolve()
     if out.exists():raise ValueError('Output already exists. Choose a new revision directory.')
     out.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.brick-guide-',dir=out.parent) as tmp:
@@ -147,6 +147,7 @@ def refresh_guide(args):
     print(dumps({'output':str(out),'instruction_style':style,'rerendered':style!=old.get('instruction_style','studio')}))
 
 def localize_guide(args):
+    dest=output_path(args.out)
     source=Path(args.folder).resolve();manifest=inspect_bundle(source)
     from guide_language import translated_model
     from guide import pdf
@@ -154,7 +155,6 @@ def localize_guide(args):
     m=translated_model(read_json(source/'model.json'),translation)
     steps=read_json(source/'instructions/steps.json')['steps']
     for step,translated in zip(steps,translation['steps']):step.update(translated)
-    dest=Path(args.out).expanduser().resolve()
     if dest.suffix.lower()!='.pdf' or dest==source or source in dest.parents:
         raise ValueError('Write the additional PDF outside the canonical bundle')
     if dest.exists():raise ValueError('Output already exists')
@@ -171,7 +171,8 @@ def localize_guide(args):
     print(dumps({'pdf':str(dest),'language':translation['language'],'rerendered':False}))
 
 def pack(args):
-    folder=Path(args.folder).resolve();inspect_bundle(folder);dest=Path(args.zip).expanduser().resolve()
+    dest=output_path(args.zip)
+    folder=Path(args.folder).resolve();inspect_bundle(folder)
     if dest.exists():raise ValueError('ZIP already exists; choose another name')
     if dest==folder or folder in dest.parents:raise ValueError('Write the ZIP outside the bundle directory')
     dest.parent.mkdir(parents=True,exist_ok=True)

@@ -3,8 +3,8 @@
   "id": "coastal-light",
   "title": "Coastal Light",
   "description": "A compact red-and-white lighthouse on a sandy shore. An original small assembly for testing the complete model-to-instructions workflow.",
-  "author": "Brick Models project",
-  "license": "UNLICENSED",
+  "author": "Selami Selvi",
+  "license": "CC-BY-4.0",
   "parts": [
     {
       "id": "p001",

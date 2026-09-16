@@ -5,6 +5,15 @@ import shutil
 from pathlib import Path
 
 
+def output_path(value):
+    """Keep generated files out of installed skills and source repositories."""
+    path = Path(value).expanduser().resolve()
+    skill = Path(__file__).resolve().parents[1]
+    if path.is_relative_to(skill) or any((p / '.git').exists() for p in (path, *path.parents)):
+        raise ValueError('Write generated outputs outside the skill and all source repositories')
+    return path
+
+
 def runtime_home():
     if os.environ.get('BRICK_MODELS_RUNTIME'):
         return Path(os.environ['BRICK_MODELS_RUNTIME']).expanduser().resolve()
