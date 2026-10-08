@@ -47,3 +47,10 @@ def find_blender(explicit=None, root=None, system=True):
         if choice and Path(choice).is_file():
             return str(Path(choice).resolve())
     raise ValueError('Blender not found. Run scripts/setup_runtime.py, or pass --blender PATH.')
+
+
+def library_paths(root=None):
+    """Where setup_runtime.py keeps the official parts data (outside every repository)."""
+    lib = (Path(root) if root else runtime_home()) / 'library'
+    return {'root': lib, 'ldraw': lib / 'ldraw-complete.zip', 'rebrickable': lib / 'rebrickable',
+            'meta': lib / 'library.json', 'index': lib / 'parts-index.json', 'analysis': lib / 'analysis'}

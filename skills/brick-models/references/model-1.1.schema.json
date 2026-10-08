@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Brick Model v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "description",
+    "author",
+    "license",
+    "parts",
+    "steps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600,
+      "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "part",
+          "color"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 64
+          },
+          "part": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9.-]*$",
+            "maxLength": 32,
+            "description": "Official LDraw part ID (brick.py search / brick.py part)"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^[0-9]{1,6}$",
+            "description": "LDraw colour code; must be recorded as produced for this part"
+          },
+          "x": {
+            "type": "integer",
+            "minimum": -256,
+            "maximum": 256
+          },
+          "y": {
+            "type": "integer",
+            "minimum": -256,
+            "maximum": 256
+          },
+          "z": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1024
+          },
+          "rotation": {
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ]
+          },
+          "pos": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": -20000,
+              "maximum": 20000
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Free placement: part origin in LDraw units and axes (-Y is up); see brick.py snap"
+          },
+          "matrix": {
+            "type": "array",
+            "items": {
+              "enum": [
+                -1,
+                0,
+                1
+              ]
+            },
+            "minItems": 9,
+            "maxItems": 9,
+            "description": "Free placement: 3x3 rotation, row-major, one of the 24 axis-aligned orientations"
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "x",
+              "y",
+              "z",
+              "rotation"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "pos"
+                  ]
+                },
+                {
+                  "required": [
+                    "matrix"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "required": [
+              "pos",
+              "matrix"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "x"
+                  ]
+                },
+                {
+                  "required": [
+                    "y"
+                  ]
+                },
+                {
+                  "required": [
+                    "z"
+                  ]
+                },
+                {
+                  "required": [
+                    "rotation"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "parts"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+          },
+          "parts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "maxLength": 64
+            }
+          },
+          "view": {
+            "enum": [
+              "front-right",
+              "back-right",
+              "back-left",
+              "front-left"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

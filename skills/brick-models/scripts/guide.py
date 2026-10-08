@@ -2,12 +2,26 @@
 import html
 import json
 from pathlib import Path
-from bricklib import COLORS, PARTS, bbox, dumps, inventory, shape
+from bricklib import COLORS, PARTS, bbox, color_hex, dumps, inventory, shape
 
 def placements(model, step):
     by={p['id']:p for p in model['parts']}
+    keys=lambda p:('pos','matrix') if 'matrix' in p else ('x','y','z','rotation')
     return [{'marker':i,'instance':id,'part_id':by[id]['part'],'color_id':by[id]['color'],
-             'x':by[id]['x'],'y':by[id]['y'],'z':by[id]['z'],'rotation':by[id]['rotation']} for i,id in enumerate(step['parts'],1)]
+             **{k:by[id][k] for k in keys(by[id])}} for i,id in enumerate(step['parts'],1)]
+
+def _footprints(model):
+    """Top-down cells (stud units) covered by each instance's measured body, for maps of 1.1 models."""
+    import assembly,math
+    out={}
+    for pid,q in assembly.instances(model).items():
+        cells=set()
+        for b in q.boxes:
+            for x in range(math.floor(b[0]/20+.03),math.ceil(b[3]/20-.03)):
+                for z in range(math.floor(b[2]/20+.03),math.ceil(b[5]/20-.03)):cells.add((x,z))
+        studs=[(math.floor(c['pos'][0]/20),math.floor(c['pos'][2]/20)) for c in q.connectors if c['kind']=='stud' and not c['female'] and abs(c['axis'][1]+1)<.01]
+        out[pid]=(cells or {(math.floor(q.t[0]/20),math.floor(q.t[2]/20))},studs)
+    return out
 
 def map_svg(model,step,previous):
     by={p['id']:p for p in model['parts']};x0,y0,_,x1,y1,_=bbox(model)
@@ -22,12 +36,29 @@ def map_svg(model,step,previous):
         py=oy+(y1-y)*unit
         rows.append(f'<path d="M {ox} {py} H {ox+(x1-x0)*unit}" stroke="#dce3e8" stroke-width=".6"/>')
         if y<y1:rows.append(f'<text x="20" y="{py-unit/2+3}" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#53616c">{y}</text>')
+    if model.get('schema_version')=='1.1':
+        # Measured footprints: draw each occupied cell, earlier pieces muted, new pieces in colour with their studs.
+        fp=_footprints(model)
+        for id in previous:
+            for cx,cy in fp[id][0]:
+                rows.append(f'<rect x="{ox+(cx-x0)*unit+.5}" y="{oy+(y1-cy-1)*unit+.5}" width="{unit-1}" height="{unit-1}" fill="#edf0f2" stroke="#cbd3da" stroke-width=".5"/>')
+        for item in placements(model,step):
+            cells,studs=fp[item['instance']];p=by[item['instance']]
+            for cx,cy in cells:
+                rows.append(f'<rect x="{ox+(cx-x0)*unit+.5}" y="{oy+(y1-cy-1)*unit+.5}" width="{unit-1}" height="{unit-1}" fill="{color_hex(p["color"])}" stroke="#26333c" stroke-width="1"/>')
+            for sx,sy in studs:
+                rows.append(f'<circle cx="{ox+(sx-x0+.5)*unit}" cy="{oy+(y1-sy-.5)*unit}" r="{unit*.19}" fill="none" stroke="#ffffff" stroke-opacity=".55"/>')
+            mx=sum(c[0] for c in cells)/len(cells);my=sum(c[1] for c in cells)/len(cells)
+            cx=ox+(mx-x0+.5)*unit;cy=oy+(y1-my-.5)*unit
+            rows.append(f'<circle cx="{cx}" cy="{cy}" r="8" fill="#fff" stroke="#23364b"/><text x="{cx}" y="{cy+3}" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="bold">{item["marker"]}</text>')
+        rows.append(f'<text x="{W/2}" y="{H-8}" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#53616c">FRONT / Y = {y0}</text></svg>')
+        return ''.join(rows)
     for id in sorted(previous,key=lambda id:by[id]['z']):
         p=by[id];w,d,_=shape(p)
         rows.append(f'<rect x="{ox+(p["x"]-x0)*unit+1}" y="{oy+(y1-p["y"]-d)*unit+1}" width="{w*unit-2}" height="{d*unit-2}" fill="#edf0f2" stroke="#cbd3da"/>')
     for item in placements(model,step):
         p=by[item['instance']];w,d,_=shape(p);px=ox+(p['x']-x0)*unit;py=oy+(y1-p['y']-d)*unit
-        rows.append(f'<rect x="{px+1}" y="{py+1}" width="{w*unit-2}" height="{d*unit-2}" fill="{COLORS[p["color"]]["hex"]}" stroke="#26333c" stroke-width="1.2"/>')
+        rows.append(f'<rect x="{px+1}" y="{py+1}" width="{w*unit-2}" height="{d*unit-2}" fill="{color_hex(p["color"])}" stroke="#26333c" stroke-width="1.2"/>')
         for ix in range(w):
             for iy in range(d):rows.append(f'<circle cx="{px+(ix+.5)*unit}" cy="{py+(iy+.5)*unit}" r="{unit*.19}" fill="none" stroke="#ffffff" stroke-opacity=".55"/>')
         cx=px+w*unit/2;cy=py+d*unit/2
@@ -48,7 +79,8 @@ def export_steps(model,out):
     (out/'instructions/steps.json').write_text(dumps(result));return steps
 
 def browser(model,steps,out,style='studio'):
-    payload=json.dumps({'model':{k:model[k] for k in ('id','title','author')},'steps':steps,'colors':COLORS},ensure_ascii=False).replace('<','\\u003c').replace('&','\\u0026')
+    used={p['color']:{'name':inventory([p])[0]['color_name'],'hex':color_hex(p['color'])} for p in model['parts']}
+    payload=json.dumps({'model':{k:model[k] for k in ('id','title','author')},'steps':steps,'colors':COLORS if model.get('schema_version')!='1.1' else used},ensure_ascii=False).replace('<','\\u003c').replace('&','\\u0026')
     page='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__TITLE__ · Building guide</title><style>
 :root{--ink:#19394b;--muted:#637786;--line:#dfe7ed;--blue:#006d9c;--paper:#f4f8fb}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{padding:20px 4vw;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px}header strong{font-size:19px;letter-spacing:-.5px}header nav{display:flex;gap:20px}a{color:var(--ink);text-underline-offset:4px;font-size:14px}main{max-width:1300px;margin:auto;padding:28px 4vw}.heading{display:flex;align-items:center;gap:22px;margin-bottom:20px}.number{font:700 56px/1 ui-monospace,SFMono-Regular,monospace;color:var(--blue);letter-spacing:-5px}h1{font-size:clamp(20px,3vw,30px);letter-spacing:-.7px;line-height:1.15;margin:0}.counter{font:13px ui-monospace,monospace;color:var(--muted)}.layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:40px}.assembly{background:#fff;display:block;width:100%;max-height:66vh;object-fit:contain}.aside h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px}.part{display:flex;align-items:center;gap:12px;margin:12px 0}.swatch{width:20px;height:20px;border-radius:3px;box-shadow:inset 0 0 0 1px #0002;flex-shrink:0}.part small{display:block;font-size:12px;color:var(--muted)}.part b{font:600 18px ui-monospace,monospace;margin-left:auto}.map{width:100%;max-height:245px;margin-top:18px}.note{font-size:14px;color:var(--muted)}.placements{font:11px/1.7 ui-monospace,monospace;color:var(--muted);margin-top:8px}footer{display:flex;gap:12px;align-items:center;padding-top:24px}button,select{font:inherit;color:var(--ink);border:1px solid #b5c9d7;background:#fff;padding:10px 15px;border-radius:5px}button{cursor:pointer}button:last-child{background:var(--ink);color:#fff;margin-left:auto}button:disabled{opacity:.4;cursor:default}select{max-width:55%;font-size:14px}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #008cbd;outline-offset:3px}.view{font-size:12px;color:var(--muted);margin:8px 0}noscript{display:block;padding:30px} @media(max-width:760px){header{align-items:flex-start}header nav{gap:12px;flex-wrap:wrap}main{padding-top:20px}.layout{grid-template-columns:1fr;gap:24px}.assembly{max-height:55vh}.aside{display:grid;grid-template-columns:1fr 1fr;gap:16px}.map{margin:0}.placements{grid-column:1/-1}.number{font-size:44px}footer{position:sticky;bottom:0;background:var(--paper);padding:14px 0}.note{grid-column:1/-1}}
@@ -57,7 +89,7 @@ def browser(model,steps,out,style='studio'):
 <script type="application/json" id="data">__DATA__</script><script>
 const data=JSON.parse(document.getElementById('data').textContent);let index=0;const el=id=>document.getElementById(id);
 data.steps.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${s.title}`;el('jump').append(o)});
-function show(){const s=data.steps[index];el('number').textContent=String(index+1).padStart(2,'0');el('counter').textContent=`${index+1} / ${data.steps.length}`;el('title').textContent=s.title;el('assembly').src=s.image;el('assembly').alt=`Step ${index+1}: ${s.title}`;el('map').src=s.map;el('note').textContent=s.note;el('view').textContent=s.view.replaceAll('-',' ');el('parts').replaceChildren();s.parts.forEach(p=>{const row=document.createElement('div');row.className='part';const sw=document.createElement('span');sw.className='swatch';sw.style.background=data.colors[p.color_id].hex;const label=document.createElement('span');label.textContent=p.part_name;const small=document.createElement('small');small.textContent=`${p.color_name} · ${p.part_id}`;label.append(small);const q=document.createElement('b');q.textContent=`${p.quantity}×`;row.append(sw,label,q);el('parts').append(row)});el('placements').replaceChildren();s.placements.forEach(p=>{const row=document.createElement('div');row.textContent=`${p.marker}: x${p.x} y${p.y} z${p.z} · ${p.rotation}°`;el('placements').append(row)});el('jump').value=index;el('prev').disabled=index===0;el('next').disabled=index===data.steps.length-1}
+function show(){const s=data.steps[index];el('number').textContent=String(index+1).padStart(2,'0');el('counter').textContent=`${index+1} / ${data.steps.length}`;el('title').textContent=s.title;el('assembly').src=s.image;el('assembly').alt=`Step ${index+1}: ${s.title}`;el('map').src=s.map;el('note').textContent=s.note;el('view').textContent=s.view.replaceAll('-',' ');el('parts').replaceChildren();s.parts.forEach(p=>{const row=document.createElement('div');row.className='part';const sw=document.createElement('span');sw.className='swatch';sw.style.background=data.colors[p.color_id].hex;const label=document.createElement('span');label.textContent=p.part_name;const small=document.createElement('small');small.textContent=`${p.color_name} · ${p.part_id}`;label.append(small);const q=document.createElement('b');q.textContent=`${p.quantity}×`;row.append(sw,label,q);el('parts').append(row)});el('placements').replaceChildren();s.placements.forEach(p=>{const row=document.createElement('div');row.textContent=p.pos?`${p.marker}: LDU ${p.pos.join(' ')}`:`${p.marker}: x${p.x} y${p.y} z${p.z} · ${p.rotation}°`;el('placements').append(row)});el('jump').value=index;el('prev').disabled=index===0;el('next').disabled=index===data.steps.length-1}
 el('prev').onclick=()=>{if(index>0){index--;show()}};el('next').onclick=()=>{if(index<data.steps.length-1){index++;show()}};el('jump').onchange=e=>{index=Number(e.target.value);show()};document.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea'))return;if(e.key==='ArrowRight'){e.preventDefault();el('next').click()}if(e.key==='ArrowLeft'){e.preventDefault();el('prev').click()}});show();
 </script></html>'''
     if style=='technical':
@@ -175,7 +207,7 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
         draw_image(str(out/'instructions'/s['image']),25,80,490,440,preserveAspectRatio=True,anchor='c',mask='auto')
         text(555,496,labels['parts_to_add'],10,'Bold',blue);yy=473
         for p in s['parts']:
-            c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.setStrokeColor(HexColor('#c5cdd2'));c.rect(555,yy-3,13,13,fill=1,stroke=1)
+            c.setFillColor(HexColor(color_hex(p['color_id'])));c.setStrokeColor(HexColor('#c5cdd2'));c.rect(555,yy-3,13,13,fill=1,stroke=1)
             text(578,yy,f'{p["quantity"]} x {part_name(p)}',10,'Bold');text(578,yy-13,f'{color_name(p)} / {p["part_id"]}',8,color=muted);yy-=30
         # Vector top view shares the same coordinates as the SVG export.
         x0,y0,_,x1,y1,_=bbox(model);unit=min(210/(x1-x0),min(155,yy-145)/(y1-y0));ox=571;oy=125
@@ -184,14 +216,22 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
         c.setStrokeColor(HexColor('#dce3e8'));c.setLineWidth(.5)
         for x in range(x1-x0+1):c.line(ox+x*unit,oy,ox+x*unit,oy+(y1-y0)*unit)
         for y in range(y1-y0+1):c.line(ox,oy+y*unit,ox+(x1-x0)*unit,oy+y*unit)
-        for p in s['placements']:
+        if model.get('schema_version')=='1.1':
+            fp=_footprints(model)
+            for p in s['placements']:
+                cells=fp[p['instance']][0];c.setFillColor(HexColor(color_hex(p['color_id'])));c.setStrokeColor(ink)
+                for cx_,cy_ in cells:c.rect(ox+(cx_-x0)*unit+.5,oy+(cy_-y0)*unit+.5,unit-1,unit-1,fill=1,stroke=1)
+                mx=sum(v[0] for v in cells)/len(cells);my=sum(v[1] for v in cells)/len(cells)
+                cx=ox+(mx-x0+.5)*unit;cy=oy+(my-y0+.5)*unit;c.setFillColor(HexColor('#ffffff'));c.circle(cx,cy,6,fill=1,stroke=0);text(cx-2,cy-2,str(p['marker']),6,'Bold')
+        for p in (s['placements'] if model.get('schema_version')!='1.1' else []):
             source=by[p['instance']];w,d,_=shape(source);xx=ox+(p['x']-x0)*unit;yyy=oy+(p['y']-y0)*unit
-            c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.setStrokeColor(ink);c.rect(xx+1,yyy+1,w*unit-2,d*unit-2,fill=1,stroke=1)
+            c.setFillColor(HexColor(color_hex(p['color_id'])));c.setStrokeColor(ink);c.rect(xx+1,yyy+1,w*unit-2,d*unit-2,fill=1,stroke=1)
             cx=xx+w*unit/2;cy=yyy+d*unit/2;c.setFillColor(HexColor('#ffffff'));c.circle(cx,cy,6,fill=1,stroke=0);text(cx-2,cy-2,str(p['marker']),6,'Bold')
         text(ox+60,oy-14,labels['front'],8,color=muted)
         # Compact explicit placement references are helpful for exact reconstruction.
         yy=96
-        for line in wrap('  '.join(f'{p["marker"]}: ({p["x"]},{p["y"]},{p["z"]}) {p["rotation"]}°' for p in s['placements']),245,7):text(555,yy,line,7,color=muted);yy-=10
+        ref=lambda p:f'{p["marker"]}: ({p["x"]},{p["y"]},{p["z"]}) {p["rotation"]}°' if 'x' in p else f'{p["marker"]}: LDU {tuple(p["pos"])}'
+        for line in wrap('  '.join(ref(p) for p in s['placements']),245,7):text(555,yy,line,7,color=muted);yy-=10
         if s['note']:
             for i,line in enumerate(wrap(s['note'],470,9)):text(36,65-i*12,line,9,color=muted)
         text(36,78,labels[s['view']],8,color=muted)
@@ -201,7 +241,7 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
         text(36,540,labels['inventory'],26,'Bold');text(36,514,labels['availability'],10,color=muted)
         yy=480
         for p in inv[start:start+17]:
-            c.setFillColor(HexColor(COLORS[p['color_id']]['hex']));c.rect(36,yy-3,13,13,fill=1,stroke=0)
+            c.setFillColor(HexColor(color_hex(p['color_id'])));c.rect(36,yy-3,13,13,fill=1,stroke=0)
             text(65,yy,part_name(p),11);text(270,yy,p['part_id'],11);text(390,yy,color_name(p),11);text(700,yy,str(p['quantity']),12,'Bold');yy-=24
         footer(page);page+=1;c.showPage()
     c.save()

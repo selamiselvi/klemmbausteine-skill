@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install isolated Python dependencies and, if missing, an official portable Blender."""
+"""Install isolated Python dependencies, the official parts data and, if missing, an official portable Blender."""
 import argparse
 import hashlib
 import json
@@ -14,7 +14,7 @@ import urllib.request
 import venv
 import zipfile
 from pathlib import Path
-from runtime import find_blender, runtime_home
+from runtime import find_blender, library_paths, runtime_home
 
 VERSION = '5.2.0'
 BASE = 'https://download.blender.org/release/Blender5.2/'
@@ -95,7 +95,71 @@ def install_blender(root):
     return find_blender(root=root, system=False)
 
 
-def setup(root, portable=False, blender=None):
+LDRAW_URL = 'https://library.ldraw.org/library/updates/complete.zip'
+REBRICKABLE_URL = 'https://cdn.rebrickable.com/media/downloads/'
+REBRICKABLE_FILES = ('colors.csv.gz', 'parts.csv.gz', 'elements.csv.gz')
+
+
+def fetch(url, dest):
+    """Plain download for data archives that change with each library release (recorded by SHA-256, not pinned)."""
+    if shutil.which('curl'):
+        subprocess.run(['curl', '-fLsS', '--connect-timeout', '30', '--max-time', '1800', '--retry', '2', '--output', str(dest), url], check=True)
+    else:
+        request = urllib.request.Request(url, headers={'User-Agent': 'BrickModels/0.2'})
+        with urllib.request.urlopen(request, timeout=60) as response, dest.open('wb') as target:
+            shutil.copyfileobj(response, target)
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as source:
+        while block := source.read(1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def install_library(root, ldraw_zip=None, rebrickable_dir=None, refresh=False):
+    """Official LDraw parts library (geometry, CC BY 4.0) and Rebrickable's part/colour tables (which part exists in
+    which colour). Both stay in the user runtime; the skill never vendors them. Local copies can be supplied."""
+    paths = library_paths(root)
+    paths['root'].mkdir(parents=True, exist_ok=True); paths['rebrickable'].mkdir(exist_ok=True)
+    if refresh or not paths['ldraw'].is_file():
+        with tempfile.TemporaryDirectory(prefix='.ldraw-', dir=paths['root']) as tmp:
+            stage = Path(tmp) / 'complete.zip'
+            if ldraw_zip:
+                shutil.copyfile(Path(ldraw_zip).expanduser(), stage)
+            else:
+                print('Downloading the official LDraw parts library (approximately 150 MB).', file=sys.stderr, flush=True)
+                fetch(LDRAW_URL, stage)
+            with zipfile.ZipFile(stage) as z:
+                bad = [n for n in z.namelist() if n.startswith('/') or '..' in Path(n).parts]
+                if bad or 'ldraw/LDConfig.ldr' not in z.namelist():
+                    raise ValueError('Unexpected LDraw archive content; refusing to use it')
+            os.replace(stage, paths['ldraw'])
+    for name in REBRICKABLE_FILES:
+        target = paths['rebrickable'] / name
+        if refresh or not target.is_file():
+            if rebrickable_dir:
+                shutil.copyfile(Path(rebrickable_dir).expanduser() / name, target)
+            else:
+                fetch(REBRICKABLE_URL + name, target)
+    import re
+    with zipfile.ZipFile(paths['ldraw']) as z:
+        updates = []
+        for n in z.namelist():
+            if n.lower().startswith('ldraw/parts/') and n.lower().endswith('.dat') and n.count('/') == 2:
+                head = z.read(n)[:600].decode('utf-8', 'replace')
+                m = re.search(r'!LDRAW_ORG\s+\S+\s+UPDATE\s+(\d{4}-\d{2})', head)
+                if m:
+                    updates.append(m[1])
+    meta = {'ldraw_release': max(updates) if updates else 'unknown', 'ldraw_sha256': sha256(paths['ldraw']),
+            'rebrickable_sha256': {n: sha256(paths['rebrickable'] / n) for n in REBRICKABLE_FILES},
+            'sources': {'ldraw': LDRAW_URL, 'rebrickable': REBRICKABLE_URL}}
+    paths['meta'].write_text(json.dumps(meta, indent=2) + '\n')
+    return meta
+
+
+def setup(root, portable=False, blender=None, ldraw_zip=None, rebrickable_dir=None, refresh=False):
     if sys.version_info < (3, 11):
         raise ValueError('Python 3.11 or newer is required')
     root = root.expanduser().resolve()
@@ -114,9 +178,12 @@ def setup(root, portable=False, blender=None):
     if not python.is_file():
         venv.EnvBuilder(with_pip=True).create(env)
     subprocess.run([str(python), '-m', 'pip', 'install', '-r', str(skill/'requirements.txt')], check=True, stdout=sys.stderr)
+    library = install_library(root, ldraw_zip, rebrickable_dir, refresh)
+    subprocess.run([str(python), str(skill/'scripts/brick.py'), 'index'], check=True, stdout=subprocess.DEVNULL,
+                   env={**os.environ, 'BRICK_MODELS_RUNTIME': str(root)})
     # Blender can start yet fail to render on an unsupported GPU/OS; the first build is still a separate check.
     print(json.dumps({'python': str(python), 'blender': binary, 'blender_version': version,
-                      'runtime': str(root), 'render_test': 'not_run'}, indent=2))
+                      'runtime': str(root), 'ldraw_release': library['ldraw_release'], 'render_test': 'not_run'}, indent=2))
 
 
 def main():
@@ -124,9 +191,12 @@ def main():
     p.add_argument('--runtime-dir', type=Path, default=runtime_home())
     p.add_argument('--portable', action='store_true', help='Use an isolated Blender even if a system copy exists')
     p.add_argument('--blender', help='Use an explicit existing executable')
+    p.add_argument('--ldraw-zip', help='Use a local copy of the official LDraw complete.zip instead of downloading it')
+    p.add_argument('--rebrickable-dir', help='Use local copies of Rebrickable colors/parts/elements.csv.gz')
+    p.add_argument('--refresh-library', action='store_true', help='Download the newest parts data again')
     a = p.parse_args()
     try:
-        setup(a.runtime_dir, a.portable, a.blender)
+        setup(a.runtime_dir, a.portable, a.blender, a.ldraw_zip, a.rebrickable_dir, a.refresh_library)
     except (ValueError, OSError, subprocess.SubprocessError) as e:
         print(f'Setup failed: {e}', file=sys.stderr)
         return 1

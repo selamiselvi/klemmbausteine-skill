@@ -1,4 +1,35 @@
-# Bundle contract v1
+# Bundle contract v1 / v1.1
+
+## Format 1.1 (default for new models)
+
+`schema_version: "1.1"`, validated against `model-1.1.schema.json`. Same fields as 1.0, with three differences:
+
+- `part` is any official LDraw part ID (e.g. `3039`, `3659`, `3069b`) that `brick.py part ID` reports as a grid part.
+- `color` is any LDraw colour code that Rebrickable records as produced for that part (`brick.py part ID` lists them).
+  Unrecorded combinations are errors; colours or parts that cannot be matched between the two sources are warnings.
+- `rotation` is 0, 90, 180 or 270 degrees about the vertical axis (direction matters for slopes and arches).
+
+Each part is placed in one of two ways:
+
+- **Grid:** `x`/`y` are the minimum corner of the rotated footprint in studs, `z` the body bottom in plates, `rotation` 0/90/180/270.
+  The footprint is measured from the part's geometry; parts whose body overhangs the grid (handles, clips, hinge
+  fingers) are anchored by their studs and receivers.
+- **Free:** `pos` is the part origin in LDraw units (20 per stud, 8 per plate) with LDraw axes (-Y is up; a grid piece
+  at `z` sits at Y = -8·z), and `matrix` is a row-major 3x3 rotation with entries -1/0/1 (24 orientations). Use
+  `brick.py snap` to compute it from two connectors.
+
+Collision boxes and connectors are measured from official geometry (`scripts/ldraw.py`, `analyze3d`): studs and stud
+receivers in any direction, Technic pins/axles and holes, bars, clips and hinge fingers. Pieces connect where a stud meets a
+receiver at the same point and axis, a pin lies on a hole's axis, a clip sits on a bar, or two hinge fingers meet.
+The validator checks body collisions (4 LDU measuring grid, 0.6 LDU tolerance; pins in holes, clips on bars and
+interleaved hinge fingers may overlap), studs blocked by bodies without a receiver, that every piece joins an earlier
+piece (pieces on the table excepted), top-down insertion for upright pieces, one connected assembly and the
+produced-colour record. Pin, clip and hinge connections are reported separately as inferred. The insertion path of
+sideways pieces, hinge angles, clutch and stability are not checked. The bundle's `catalog.json` records the measured
+parts, colours and the LDraw library release used. `model.ldr` places each official part with its own origin; renders
+use the official meshes.
+
+## Format 1.0
 
 The executable schema is `model.schema.json`; the part/color catalog is `catalog.json`. `brick.py catalog` prints both catalogs. This initial palette deliberately covers regular, upright rectangular bricks and plates only.
 

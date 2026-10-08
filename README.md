@@ -2,7 +2,7 @@
 
 A local agent skill for designing brick assemblies and producing four studio views, step-by-step building instructions, a parts CSV and a portable ZIP bundle.
 
-**Early working version.** The first engine supports upright rectangular bricks and plates on a stud grid. It does not yet support slopes, hinges, sideways connections or arbitrary imported CAD. The agent designs the model; the included tools validate and export that design.
+**Early working version.** The engine uses the official [LDraw parts library](https://library.ldraw.org/): every part that sits upright on the stud grid (bricks, plates, tiles, slopes, arches, round bricks, windows and more) in every colour [Rebrickable](https://rebrickable.com/downloads/) records as produced for that part. Studs, receivers, pins, holes, bars, clips, hinge fingers and volumes are measured from each part's real geometry, renders use the official meshes, and parts can be placed sideways or upside down in any of the 24 axis-aligned orientations (`brick.py snap` docks a part onto a connector). Hinge and clip fits are inferred, not simulated; angled (non-90-degree) placements, ball joints and flexible parts are not supported yet. The agent designs the model; the included tools validate and export that design.
 
 ## Use with your agent
 
@@ -34,7 +34,7 @@ Before designing a new model, the agent offers “Start right away” or “Choo
 
 Requirements: Python 3.11+ and Blender. Tested on macOS with Python 3.14 and Blender 5.2. Other supported Blender/Python combinations still need testing.
 
-For first-time setup, run `python3 skills/brick-models/scripts/setup_runtime.py`. It reuses an existing Blender or downloads a checksum-pinned official portable copy, and installs Python dependencies in the current user's cache outside repositories. Use the Python and Blender paths it prints. macOS Apple Silicon, Linux x64 and Windows x64/ARM64 packages are implemented; the full clean setup and rendering flow has been tested on macOS Apple Silicon only. Unsupported platforms receive an actionable error. Python itself must already be available. See [first-run behavior](skills/brick-models/references/first-run.md).
+For first-time setup, run `python3 skills/brick-models/scripts/setup_runtime.py`. It reuses an existing Blender or downloads a checksum-pinned official portable copy, installs Python dependencies and downloads the official LDraw parts library plus Rebrickable's part/colour tables (about 150 MB, recorded by SHA-256) into the current user's cache outside repositories. Find parts with `brick.py search "slope 45 2 x 2"` and inspect one with `brick.py part 3039`. Use the Python and Blender paths it prints. macOS Apple Silicon, Linux x64 and Windows x64/ARM64 packages are implemented; the full clean setup and rendering flow has been tested on macOS Apple Silicon only. Unsupported platforms receive an actionable error. Python itself must already be available. See [first-run behavior](skills/brick-models/references/first-run.md).
 
 For a manual Python environment instead, keep it outside the checkout:
 
@@ -87,6 +87,8 @@ Checks cover schema, unique instances, step coverage, body intersections, vertic
 Manifest hashes detect file changes; they are not an authenticity signature or proof that HTML/PDF files are safe. `verify` checks locally generated bundles, not hostile uploads. There is no ZIP importer in this release. A future importer must enforce archive path, file count and decompressed-size limits and must never execute submitted content.
 
 ## Third-party tools
+
+The LDraw parts library is downloaded at setup into the user cache and is not redistributed here; its parts are licensed individually, mainly under CC BY 4.0 (see the library's `CAreadme.txt`). Renders made from it show LDraw geometry; attribution guidance is in the library. Rebrickable's downloadable tables (colours, parts, elements) are fetched by each user into their own cache and used only to check which part exists in which colour; they are not redistributed, and Rebrickable's own terms apply.
 
 Blender is downloaded separately from its official distribution and retains its [GNU GPL license](https://www.blender.org/about/license/). Python dependencies retain their own licenses; they are installed into an external environment, not vendored in this repository. The renderer creates its own simplified brick geometry. `model.ldr` references part IDs but includes no LDraw library meshes. An external [LDraw Parts Library](https://ldraw.org/docs-main/licenses/legal-info.html) has its own per-file terms; those still apply if its geometry is redistributed. Using these tools does not automatically assign the skill’s license to a creator’s model or artwork.
 

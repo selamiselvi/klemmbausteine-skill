@@ -9,7 +9,7 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
-from bricklib import CATALOG, ROOT, VERSION, VIEWS, dumps, ldraw, output_names, parts_csv, read_json, sha, validate
+from bricklib import CATALOG, ROOT, VERSION, VIEWS, catalog_for, dumps, ldraw, output_names, parts_csv, read_json, sha, validate
 from runtime import find_blender, output_path
 
 def blender_path(explicit=None):
@@ -19,8 +19,13 @@ def doctor():
     modules={name:importlib.util.find_spec(name) is not None for name in ('reportlab','jsonschema','PIL')}
     try:b=blender_path()
     except ValueError:b=None
-    print(dumps({'python':sys.version.split()[0],'dependencies':modules,'blender':b,'ready':all(modules.values()) and bool(b)}))
-    return 0 if all(modules.values()) and b else 1
+    from runtime import library_paths
+    lib=library_paths();library=lib['ldraw'].is_file() and lib['index'].is_file()
+    release=read_json(lib['meta']).get('ldraw_release') if lib['meta'].is_file() else None
+    ready=all(modules.values()) and bool(b) and library
+    print(dumps({'python':sys.version.split()[0],'dependencies':modules,'blender':b,
+                 'parts_library':{'installed':library,'ldraw_release':release,'path':str(lib['root'])},'ready':ready}))
+    return 0 if ready else 1
 
 def checked_model(path):
     m=read_json(path);r=validate(m)
@@ -62,7 +67,7 @@ def inspect_bundle(folder):
     for name in sorted(expected):
         p=folder/name
         if files[name] != {'bytes':p.stat().st_size,'sha256':sha(p)}:raise ValueError(f'File changed or truncated: {name}')
-    if read_json(folder/'catalog.json')!=CATALOG:raise ValueError('Catalog version/content mismatch')
+    if read_json(folder/'catalog.json')!=catalog_for(m):raise ValueError('Catalog version/content mismatch')
     if (folder/'parts.csv').read_text()!=parts_csv(m):raise ValueError('Parts CSV differs from model')
     if (folder/'model.ldr').read_text()!=ldraw(m):raise ValueError('LDraw differs from model')
     if read_json(folder/'validation.json')!=r:raise ValueError('Validation report differs from independent checks')
@@ -102,7 +107,7 @@ def build(args):
     out.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.brick-build-',dir=out.parent) as tmp:
         stage=Path(tmp)/'bundle';stage.mkdir();(stage/'renders').mkdir();(stage/'instructions').mkdir()
-        for name,value in [('model.json',m),('catalog.json',CATALOG),('validation.json',r)]:
+        for name,value in [('model.json',m),('catalog.json',catalog_for(m)),('validation.json',r)]:
             (stage/name).write_text(dumps(value))
         (stage/'parts.csv').write_text(parts_csv(m));(stage/'model.ldr').write_text(ldraw(m))
         from guide import export_steps,browser,pdf
@@ -191,7 +196,19 @@ def pack(args):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='cmd',required=True)
-    sub.add_parser('doctor');sub.add_parser('catalog')
+    sub.add_parser('doctor');sub.add_parser('catalog');sub.add_parser('index')
+    p=sub.add_parser('search',help='Find official parts by words, e.g. "slope 45 2 x 2"');p.add_argument('query',nargs='+')
+    p.add_argument('--color',help='Only parts produced in this colour (name or LDraw code)');p.add_argument('--limit',type=int,default=25)
+    p.add_argument('--all',action='store_true',help='Include moved/alias/obsolete entries')
+    p=sub.add_parser('part',help='Measured grid data and produced colours of one part');p.add_argument('id')
+    sub.add_parser('colors',help='All LDraw colours with their Rebrickable match')
+    p=sub.add_parser('connectors',help='Measured connectors of a part (local LDraw units), or of a placed instance');p.add_argument('id')
+    p.add_argument('--model',help='With a model: list the world connectors of instance ID')
+    p=sub.add_parser('snap',help='Placement that docks a new part onto a connector of a placed instance')
+    p.add_argument('model');p.add_argument('--target',required=True,help='INSTANCE:CONNECTOR from brick.py connectors --model')
+    p.add_argument('--part',required=True);p.add_argument('--color',required=True);p.add_argument('--connector',type=int,required=True,help="Index into the new part's connectors")
+    p.add_argument('--spin',type=int,default=0,choices=[0,90,180,270]);p.add_argument('--id',default='new')
+    p.add_argument('--offset',default='0,0,0',help='Nudge in LDU, e.g. 4,0,0 (hinges/clips: slide until no collision)')
     p=sub.add_parser('validate');p.add_argument('model')
     p=sub.add_parser('build');p.add_argument('model');p.add_argument('--out',required=True);p.add_argument('--blender');p.add_argument('--quality',choices=['draft','standard'],default='standard');p.add_argument('--timeout',type=int,default=1800)
     p.add_argument('--instruction-style',choices=['studio','technical'],default='studio')
@@ -207,6 +224,32 @@ def main():
     try:
         if a.cmd=='doctor':return doctor()
         if a.cmd=='catalog':print(dumps(CATALOG))
+        elif a.cmd=='index':
+            import partdb;print(dumps(partdb.build_index()))
+        elif a.cmd=='search':
+            import partdb;print(dumps(partdb.search(' '.join(a.query),a.limit,a.color,a.all)))
+        elif a.cmd=='colors':
+            import partdb;print(dumps({k:{'name':v['name'],'hex':v['hex'],'transparent':v['transparent'],'rebrickable':v['rebrickable']} for k,v in partdb.index()['colors'].items()}))
+        elif a.cmd=='connectors':
+            import assembly,ldraw
+            if a.model:
+                inst=assembly.Instance(next(p for p in read_json(a.model)['parts'] if p['id']==a.id))
+                rows=inst.connectors
+            else:
+                rows=ldraw.analyze3d(a.id)['connectors']
+            print(dumps([{'index':i,**c} for i,c in enumerate(rows)]))
+        elif a.cmd=='snap':
+            import assembly
+            target,index=a.target.rsplit(':',1)
+            inst=assembly.Instance(next(p for p in read_json(a.model)['parts'] if p['id']==target))
+            print(dumps(assembly.snap(inst,int(index),a.part,a.color,a.connector,a.spin,a.id,tuple(float(v) for v in a.offset.split(',')))))
+        elif a.cmd=='part':
+            import ldraw,partdb
+            info=partdb.part(a.id);g=ldraw.analyze(info['id'])
+            keep=('grid','reason','width','depth','height','cells','layers','studs','receivers','side_studs')
+            print(dumps({'id':info['id'],'title':info['title'],'category':info['category'],
+                         'produced_colors':[f"{c} {partdb.color(c)['name']}" for c in info['colors']],
+                         'grid':{k:g[k] for k in keep if k in g}}))
         elif a.cmd=='validate':
             r=validate(read_json(a.model));print(dumps(r));return 0 if r['passed'] else 1
         elif a.cmd=='build':build(a)
