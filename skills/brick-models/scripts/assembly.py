@@ -281,6 +281,8 @@ def validate(model, report):
                         + ', '.join(f'{v} {k}' for k, v in sorted(inferred.items())))
     if any(not q.upright for q in inst.values()):
         warnings.append(f'{sum(not q.upright for q in inst.values())} sideways or inverted pieces: insertion path not checked')
+    import steps as _steps
+    warnings.extend(_steps.spread_warnings(model, inst))
     ex = [q.extent() for q in inst.values()]
     dims = [max(e[3] for e in ex) - min(e[0] for e in ex), max(e[5] for e in ex) - min(e[2] for e in ex),
             max(e[4] for e in ex) - min(e[1] for e in ex) + 4]

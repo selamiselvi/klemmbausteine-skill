@@ -2,6 +2,7 @@
 """Local brick-model pipeline. No network calls or publishing credentials."""
 import argparse
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
@@ -46,6 +47,26 @@ def finish_images(stage):
         with Image.open(p) as source:
             rgba=source.convert('RGBA');white=Image.new('RGBA',rgba.size,'white')
             Image.alpha_composite(white,rgba).convert('RGB').save(p)
+
+def compose_insets(stage):
+    """Paste each zoomed step's whole-model overview (working area outlined) into its lower-left corner, then drop
+    the temporary overview images so the bundle keeps its fixed inventory."""
+    from PIL import Image, ImageDraw
+    temp=stage/'.insets'
+    if not temp.is_dir():return
+    meta=read_json(temp/'insets.json') if (temp/'insets.json').is_file() else {}
+    for n,(x0,y0,x1,y1) in meta.items():
+        step=stage/f'instructions/step-{int(n):03}.png';over=temp/f'overview-{int(n):03}.png'
+        with Image.open(step) as s, Image.open(over) as o:
+            s=s.convert('RGB');o=o.convert('RGB');w=o.size[0]
+            ImageDraw.Draw(o).rectangle([x0*w,y0*w,x1*w,y1*w],outline=(0,125,168),width=4)
+            side=int(s.size[0]*.3);o=o.resize((side,side),Image.LANCZOS)
+            frame=Image.new('RGB',(side+4,side+4),(197,205,210));frame.paste(o,(2,2))
+            W,H=s.size;grey=s.convert('L')
+            corners=[(12,12),(W-side-16,12),(12,H-side-16),(W-side-16,H-side-16)]
+            free=lambda c:sum(v>245 for v in grey.crop((c[0],c[1],c[0]+side+4,c[1]+side+4)).resize((48,48)).getdata())
+            s.paste(frame,max(corners,key=free));s.save(step)   # the emptiest corner hides the least model
+    shutil.rmtree(temp)
 
 def inspect_bundle(folder):
     folder=Path(folder).resolve()
@@ -117,7 +138,7 @@ def build(args):
         with log.open('w') as stream:
             run=subprocess.run([blender,'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(stage/'model.json'),str(stage),args.quality,args.instruction_style],stdout=stream,stderr=subprocess.STDOUT,timeout=args.timeout)
         if run.returncode:raise ValueError('Blender failed:\n'+'\n'.join(log.read_text(errors='replace').splitlines()[-25:]))
-        finish_images(stage)
+        finish_images(stage);compose_insets(stage)
         browser(m,steps,stage,args.instruction_style);pdf(m,steps,r,stage,args.instruction_style)
         write_manifest(stage,m,args.quality,args.instruction_style)
         inspect_bundle(stage)
@@ -135,7 +156,7 @@ def preview(args):
     with log.open('w') as stream:
         run=subprocess.run([blender_path(args.blender),'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(out/'model.json'),str(out),args.quality,'studio','views-only'],stdout=stream,stderr=subprocess.STDOUT,timeout=args.timeout)
     if run.returncode:raise ValueError('Blender failed:\n'+'\n'.join(log.read_text(errors='replace').splitlines()[-25:]))
-    finish_images(out/'renders')
+    finish_images(out/'renders');shutil.rmtree(out/'.insets',ignore_errors=True)
     print(dumps({'preview':str(out/'renders'),'part_count':len(m['parts']),'warnings':len(r['warnings'])}))
 
 def refresh_guide(args):
@@ -161,6 +182,7 @@ def refresh_guide(args):
                 run=subprocess.run([blender_path(getattr(args,'blender',None)),'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(stage/'model.json'),str(stage),old['quality'],style,'steps-only'],stdout=stream,stderr=subprocess.STDOUT,timeout=getattr(args,'timeout',1800))
             if run.returncode:raise ValueError('Blender failed:\n'+'\n'.join(log.read_text(errors='replace').splitlines()[-25:]))
             finish_images(stage/'instructions')
+            if (stage/'.insets').is_dir():finish_images(stage/'.insets');compose_insets(stage)
         steps=export_steps(m,stage);browser(m,steps,stage,style);pdf(m,steps,r,stage,style)
         write_manifest(stage,m,old['quality'],style);inspect_bundle(stage);stage.rename(out)
     print(dumps({'output':str(out),'instruction_style':style,'rerendered':style!=old.get('instruction_style','studio')}))
@@ -224,6 +246,9 @@ def main():
     p.add_argument('--spin',type=int,default=0,choices=[0,90,180,270]);p.add_argument('--id',default='new')
     p.add_argument('--offset',default='0,0,0',help='Nudge in LDU, e.g. 4,0,0 (hinges/clips: slide until no collision)')
     p=sub.add_parser('validate');p.add_argument('model')
+    p=sub.add_parser('regroup',help='Reorder pieces within each phase into compact, zoomable steps (large models)')
+    p.add_argument('model');p.add_argument('--out',required=True);p.add_argument('--max-parts',type=int,default=8)
+    p.add_argument('--max-span',type=int,default=12,help='Largest footprint of one step in studs')
     p=sub.add_parser('build');p.add_argument('model');p.add_argument('--out',required=True);p.add_argument('--blender');p.add_argument('--quality',choices=['draft','standard'],default='standard');p.add_argument('--timeout',type=int,default=1800)
     p.add_argument('--instruction-style',choices=['studio','technical'],default='studio')
     p=sub.add_parser('verify');p.add_argument('folder')
@@ -267,6 +292,13 @@ def main():
             print(dumps({'id':info['id'],'title':info['title'],'category':info['category'],
                          'produced_colors':[f"{c} {partdb.color(c)['name']}" for c in info['colors']],
                          'grid':{k:g[k] for k in keep if k in g}}))
+        elif a.cmd=='regroup':
+            import steps
+            m=steps.regroup(read_json(a.model),a.max_parts,a.max_span);r=validate(m)
+            if not r['passed']:print(dumps({'passed':False,'errors':r['errors'][:20]}));return 1
+            Path(a.out).write_text(json.dumps(m,indent=1,ensure_ascii=False)+'\n')
+            spread=[w for w in r['warnings'] if 'spread over' in w]
+            print(dumps({'passed':True,'out':a.out,'steps_before':len(read_json(a.model)['steps']),'steps_after':len(m['steps']),'spread_steps':len(spread)}));return 0
         elif a.cmd=='validate':
             r=validate(read_json(a.model));print(dumps(r));return 0 if r['passed'] else 1
         elif a.cmd=='build':build(a)

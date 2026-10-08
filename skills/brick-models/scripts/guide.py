@@ -10,10 +10,14 @@ def placements(model, step):
     return [{'marker':i,'instance':id,'part_id':by[id]['part'],'color_id':by[id]['color'],
              **{k:by[id][k] for k in keys(by[id])}} for i,id in enumerate(step['parts'],1)]
 
+_FOOTPRINTS={}
+
 def _footprints(model):
-    """Top-down cells (stud units) covered by each instance's measured body, for maps of 1.1 models."""
+    """Top-down cells (stud units) covered by each instance's measured body, for maps of 1.1 models (cached per model)."""
     import assembly,math
-    out={}
+    key=json.dumps(model['parts'],sort_keys=True)
+    if key in _FOOTPRINTS:return _FOOTPRINTS[key]
+    out=_FOOTPRINTS[key]={}
     for pid,q in assembly.instances(model).items():
         cells=set()
         for b in q.boxes:

@@ -175,5 +175,28 @@ class Sideways(unittest.TestCase):
         self.assertFalse(self.validate(m)['passed'])
 
 
+@unittest.skipUnless(HAVE_LIBRARY, 'official parts library not installed (run setup_runtime.py)')
+class CompactSteps(unittest.TestCase):
+    """Large models: steps stay in one working area (steps.py)."""
+
+    def test_regroup_splits_a_scattered_step(self):
+        import steps
+        from bricklib import validate
+        corners = [(0, 0), (30, 0), (0, 14), (30, 14)]
+        parts = [part('base', '91405', '72', 0, 0, 0), part('base2', '91405', '72', 16, 0, 0), part('tie', '3034', '72', 12, 6, 1)]
+        parts += [part(f'b{i}', '3001', '4', x, y, 1) for i, (x, y) in enumerate(corners)]
+        parts += [part(f't{i}', '3001', '15', x, y, 4) for i, (x, y) in enumerate(corners)]
+        m = model(parts, [['base', 'base2', 'tie'], [f'b{i}' for i in range(4)] + [f't{i}' for i in range(4)]])
+        r = validate(m)
+        self.assertTrue(r['passed'], r['errors']); self.assertTrue(any('step 2: new pieces spread' in w for w in r['warnings']))
+        g = steps.regroup(m)
+        r = validate(g)
+        self.assertTrue(r['passed'], r['errors']); self.assertFalse(any('spread over' in w for w in r['warnings']))
+        self.assertEqual(len(g['steps']), 6)               # two base areas, then one step per corner tower
+        for s in g['steps'][2:]:                       # bottom brick before the brick on top of it
+            self.assertEqual([p[0] for p in s['parts']], ['b', 't'])
+        self.assertEqual(g['steps'][2]['title'], 'Step 2 (1/4)')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -157,7 +157,11 @@ scene.collection.objects.link(cam); scene.camera = cam; cam_data.type = 'ORTHO';
 
 
 def frame(objs, view):
-    bounds, blo, bhi = world_bounds(objs)
+    frame_points(world_bounds(objs)[0], view)
+
+
+def frame_points(bounds, view):
+    blo = Vector(tuple(min(v[i] for v in bounds) for i in range(3))); bhi = Vector(tuple(max(v[i] for v in bounds) for i in range(3)))
     center = (blo + bhi) / 2
     dx, dy = VIEWS[view]; cam.location = center + Vector((dx, dy, 1)) * max(25, (bhi - blo).length * 2)
     cam.rotation_euler = (center - cam.location).to_track_quat('-Z', 'Y').to_euler()
@@ -194,7 +198,7 @@ if style == 'technical':
     shading.curvature_ridge_factor = .2; shading.curvature_valley_factor = 1.2
     shading.show_object_outline = True; shading.object_outline_color = (.10, .13, .16)
     plane.hide_render = True
-    accent = material('New part outline', linear_hex('#007da8'))
+    accent = material('New part outline', linear_hex('#0a84ff'))
 
     def tech_mesh(part, color):
         """Per part/colour copy with three flat face tones (top, front/back, sides) for depth without lighting."""
@@ -226,6 +230,31 @@ if style == 'technical':
         obj.matrix_world = objects[p['id']].matrix_world; obj.data.materials.append(accent)
         return obj
 
+ZOOM = .6          # zoom in when the working area needs less than 60 % of the whole-model frame
+insets = {}
+(out / '.insets').mkdir(exist_ok=True)
+
+
+def zoom_region(new_objs, all_objs):
+    """Corner points of the working area: the new pieces plus a margin of surrounding model for orientation."""
+    _, nlo, nhi = world_bounds(new_objs); _, alo, ahi = world_bounds(all_objs)
+    margin = max(3.2, .35 * max(nhi.x - nlo.x, nhi.y - nlo.y))
+    lo = Vector((max(alo.x, nlo.x - margin), max(alo.y, nlo.y - margin), alo.z))
+    hi = Vector((min(ahi.x, nhi.x + margin), min(ahi.y, nhi.y + margin), max(nhi.z + margin * .5, nlo.z + 1)))
+    return [Vector((x, y, z)) for x in (lo.x, hi.x) for y in (lo.y, hi.y) for z in (lo.z, hi.z)]
+
+
+def line_width(lines):
+    """New-part outlines keep about 3.5 px on screen whatever the zoom."""
+    for o in lines:
+        o.data.bevel_depth = cam_data.ortho_scale * 1.75 / scene.render.resolution_x
+
+
+def scale_for(points, view):
+    frame_points(points, view); return cam_data.ortho_scale
+
+
+from bpy_extras.object_utils import world_to_camera_view
 by = {p['id']: p for p in model['parts']}; seen = set(); view = 'front-right'
 for n, step in enumerate(model['steps'], 1):
     current = set(step['parts']); seen |= current; view = step.get('view', view)
@@ -234,9 +263,24 @@ for n, step in enumerate(model['steps'], 1):
         if style != 'technical':
             obj.material_slots[0].material = mats[by[id]['color']] if id in current else muted
     lines_now = [outline(by[id]) for id in step['parts']] if style == 'technical' else []
-    render(f'instructions/step-{n:03}.png', [objects[id] for id in sorted(seen)], view, 640 if quality == 'draft' else 1000)
+    all_objs = [objects[id] for id in sorted(seen)]; new_objs = [objects[id] for id in step['parts']]
+    size = 640 if quality == 'draft' else 1000
+    region = zoom_region(new_objs, all_objs)
+    whole = scale_for(world_bounds(all_objs)[0], view); part = scale_for(region, view)
+    if part < ZOOM * whole:
+        # Overview of the whole model with the working area marked; composited into the corner by brick.py.
+        frame(all_objs, view); scene.render.resolution_x = scene.render.resolution_y = 360
+        line_width(lines_now); scene.render.filepath = str(out / f'.insets/overview-{n:03}.png'); bpy.ops.render.render(write_still=True)
+        pts = [world_to_camera_view(scene, cam, p) for p in region]
+        insets[n] = [min(p.x for p in pts), 1 - max(p.y for p in pts), max(p.x for p in pts), 1 - min(p.y for p in pts)]
+        frame_points(region, view)
+    else:
+        frame(all_objs, view)
+    scene.render.resolution_x = scene.render.resolution_y = size; line_width(lines_now)
+    scene.render.filepath = str(out / f'instructions/step-{n:03}.png'); bpy.ops.render.render(write_still=True)
     for o in lines_now:
         curve = o.data; bpy.data.objects.remove(o, do_unlink=True); bpy.data.curves.remove(curve)
+(out / '.insets/insets.json').write_text(json.dumps(insets))
 if style == 'technical':
     for obj in objects.values():
         obj.hide_render = True
