@@ -19,6 +19,7 @@ args = sys.argv[sys.argv.index('--') + 1:]
 model_path, out, quality = args[:3]
 style = args[3] if len(args) > 3 else 'studio'
 steps_only = len(args) > 4 and args[4] == 'steps-only'
+views_only = len(args) > 4 and args[4] == 'views-only'
 model = json.loads(Path(model_path).read_text()); out = Path(out)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -46,28 +47,39 @@ def linear_hex(v):
     return [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in vals]
 
 
-def material(name, rgb, roughness=.3, transparent=False):
+def material(name, rgb, roughness=.3, transparent=False, finish='solid'):
     m = bpy.data.materials.new(name); m.diffuse_color = (*rgb, 1); m.use_nodes = True
     bs = m.node_tree.nodes.get('Principled BSDF')
     bs.inputs['Base Color'].default_value = (*rgb, 1); bs.inputs['Roughness'].default_value = roughness
     if transparent:
         bs.inputs['Transmission Weight'].default_value = 1.0; bs.inputs['Roughness'].default_value = .05
         bs.inputs['IOR'].default_value = 1.49
+    elif finish in ('chrome', 'metal', 'pearlescent', 'matte_metallic'):
+        # LDConfig finishes: metallic plastics read as metal, pearlescent ones with a softer sheen.
+        # Pearlescent plastic keeps most of its diffuse colour (pearl gold reads gold, not bronze); metal and chrome mirror more.
+        bs.inputs['Metallic'].default_value = {'chrome': 1.0, 'metal': .85, 'pearlescent': .45, 'matte_metallic': .6}[finish]
+        bs.inputs['Roughness'].default_value = {'chrome': .08, 'metal': .25, 'pearlescent': .28, 'matte_metallic': .45}[finish]
+        if finish == 'pearlescent':
+            bs.inputs['Coat Weight'].default_value = .4; bs.inputs['Coat Roughness'].default_value = .15
+    elif finish == 'rubber':
+        bs.inputs['Roughness'].default_value = .8
     return m
 
 
-def is_trans(code):
+def info(code):
     try:
-        return ldraw.colors().get(code, {}).get('transparent', False)
+        return ldraw.colors().get(code, {})
     except ValueError:
-        return False
+        return {}
 
 
 placed = assembly.instances(model)
 mats = {}
 for p in model['parts']:
     if p['color'] not in mats:
-        mats[p['color']] = material(f'Colour {p["color"]}', linear_hex(color_hex(p['color'])), transparent=is_trans(p['color']))
+        c = info(p['color'])
+        mats[p['color']] = material(f'Colour {p["color"]}', linear_hex(color_hex(p['color'])), transparent=c.get('transparent', False),
+                                    finish=c.get('finish', 'solid'))
 muted = material('Earlier steps', (.66, .69, .72), .65)
 white = material('Studio floor', (1, 1, 1), .8)
 
@@ -165,6 +177,10 @@ def render(name, objs, view, size):
 if not steps_only:
     for view in VIEWS:
         render(f'renders/{view}.png', list(objects.values()), view, 720 if quality == 'draft' else 1200)
+
+if views_only:
+    print('BRICK_RENDER_COMPLETE', flush=True)
+    sys.exit(0)
 
 tech = {}
 if style == 'technical':

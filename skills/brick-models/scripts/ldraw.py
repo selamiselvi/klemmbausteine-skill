@@ -72,7 +72,8 @@ def colors():
     for line in read('LDConfig.ldr').splitlines():
         m = re.search(r'!COLOUR\s+(\S+)\s+CODE\s+(\d+)\s+VALUE\s+(#[0-9A-Fa-f]{6})', line)
         if m:
-            out[m[2]] = {'name': m[1].replace('_', ' '), 'hex': m[3].upper(), 'transparent': 'ALPHA' in line}
+            finish = next((f.lower() for f in ('CHROME', 'PEARLESCENT', 'METAL', 'RUBBER', 'MATTE_METALLIC') if f in line.split()), 'solid')
+            out[m[2]] = {'name': m[1].replace('_', ' '), 'hex': m[3].upper(), 'transparent': 'ALPHA' in line, 'finish': finish}
     return out
 
 

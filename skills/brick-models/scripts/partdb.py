@@ -56,6 +56,14 @@ def build_index():
         produced = sorted((c for c in combos.get(pid.lower(), ()) if c in colors and colors[c]['rebrickable']), key=int)
         parts.append({'id': pid, 'title': title, 'category': cat, 'keywords': keys, 'alias': alias,
                       'rebrickable': rbp['name'] if rbp else None, 'colors': produced})
+    # LDraw renames parts ("~Moved to 3023b") while Rebrickable may keep the old number: credit the new ID too.
+    by_id = {p['id'].lower(): p for p in parts}
+    for p in parts:
+        m = re.match(r'~Moved to (\S+)', p['title'])
+        target = by_id.get(m[1].lower()) if m else None
+        if target and p['colors']:
+            target['colors'] = sorted(set(target['colors']) | set(p['colors']), key=int)
+            target['rebrickable'] = target['rebrickable'] or p['rebrickable']
     index = {'version': INDEX_VERSION, 'ldraw_release': ldraw.release(), 'colors': colors, 'parts': parts}
     paths['index'].write_text(json.dumps(index, separators=(',', ':')))
     return {'parts': len(parts), 'with_known_colors': sum(bool(p['colors']) for p in parts), 'colors': len(colors)}

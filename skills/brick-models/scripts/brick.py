@@ -124,6 +124,20 @@ def build(args):
         stage.rename(out)
     print(dumps({'output':str(out),'part_count':len(m['parts']),'step_count':len(steps),'warnings':r['warnings'],'guide':str(out/'instructions/index.html')}))
 
+def preview(args):
+    """Four studio views only, written to a new folder; for iterating on a design before the full build."""
+    out=output_path(args.out)
+    m,r=checked_model(args.model)
+    if out.exists():raise ValueError('Output already exists. Choose a new preview directory.')
+    out.mkdir(parents=True);(out/'renders').mkdir()
+    (out/'model.json').write_text(dumps(m))
+    log=out/'render.log'
+    with log.open('w') as stream:
+        run=subprocess.run([blender_path(args.blender),'--background','--python-exit-code','1','--python',str(ROOT/'scripts/render_blender.py'),'--',str(out/'model.json'),str(out),args.quality,'studio','views-only'],stdout=stream,stderr=subprocess.STDOUT,timeout=args.timeout)
+    if run.returncode:raise ValueError('Blender failed:\n'+'\n'.join(log.read_text(errors='replace').splitlines()[-25:]))
+    finish_images(out/'renders')
+    print(dumps({'preview':str(out/'renders'),'part_count':len(m['parts']),'warnings':len(r['warnings'])}))
+
 def refresh_guide(args):
     out=output_path(args.out)
     source=Path(args.folder).resolve();old=inspect_bundle(source);m,r=checked_model(source/'model.json')
@@ -213,6 +227,9 @@ def main():
     p=sub.add_parser('build');p.add_argument('model');p.add_argument('--out',required=True);p.add_argument('--blender');p.add_argument('--quality',choices=['draft','standard'],default='standard');p.add_argument('--timeout',type=int,default=1800)
     p.add_argument('--instruction-style',choices=['studio','technical'],default='studio')
     p=sub.add_parser('verify');p.add_argument('folder')
+    p=sub.add_parser('preview',help='Render only the four studio views of a valid model (fast design check, not a bundle)')
+    p.add_argument('model');p.add_argument('--out',required=True);p.add_argument('--quality',choices=['draft','standard'],default='draft')
+    p.add_argument('--blender');p.add_argument('--timeout',type=int,default=1800)
     p=sub.add_parser('refresh-guide');p.add_argument('folder');p.add_argument('--out',required=True)
     p.add_argument('--text-model',help='Validated model with only title, description and step prose changed')
     p.add_argument('--instruction-style',choices=['technical']);p.add_argument('--blender');p.add_argument('--timeout',type=int,default=1800)
@@ -261,6 +278,7 @@ def main():
             from guide_language import translation_template
             print(dumps(translation_template(read_json(Path(a.folder)/'model.json'))))
         elif a.cmd=='verify':print(dumps(inspect_bundle(a.folder)))
+        elif a.cmd=='preview':preview(a)
     except (ValueError,OSError,ImportError,subprocess.TimeoutExpired) as e:
         print(f'Error: {e}',file=sys.stderr);return 1
     return 0

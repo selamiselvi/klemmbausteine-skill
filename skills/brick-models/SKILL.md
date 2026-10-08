@@ -37,7 +37,7 @@ For sideways building (SNOT) and other techniques, place a part freely with `pos
 
 Run `python scripts/brick.py validate MODEL`. Fix errors in the source. Consider warnings about support and temporary loose foundation pieces. Keep each numbered step small and its title meaningful.
 
-Run `python scripts/brick.py build MODEL --out OUTPUT` to produce the complete result. For a faster iteration use `--quality draft`; final output defaults to `standard`. Use a new output directory for revisions; an existing directory is never overwritten.
+While designing, `python scripts/brick.py preview MODEL --out DIR` renders only the four studio views (fast check of proportions and colours). Run `python scripts/brick.py build MODEL --out OUTPUT` to produce the complete result. For a faster iteration use `--quality draft`; final output defaults to `standard`. Use a new output directory for revisions; an existing directory is never overwritten.
 
 Inspect all four renders and representative early/middle/late instruction pages plus the parts inventory. Check silhouette, actual placement visibility, framing and readable labels. The guide includes a cumulative 3D view and a stud-grid placement inset; newly added pieces retain their color while earlier pieces are muted. If a step is ambiguous, split it or change its camera in the model and rebuild. Rendering success alone is not quality approval.
 
