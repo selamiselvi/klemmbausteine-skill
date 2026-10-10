@@ -27,8 +27,8 @@ def _footprints(model):
         out[pid]=(cells or {(math.floor(q.t[0]/20),math.floor(q.t[2]/20))},studs)
     return out
 
-def map_svg(model,step,previous):
-    by={p['id']:p for p in model['parts']};x0,y0,_,x1,y1,_=bbox(model)
+def map_svg(model,step,previous,model_bounds=None):
+    by={p['id']:p for p in model['parts']};x0,y0,_,x1,y1,_=model_bounds if model_bounds is not None else bbox(model)
     unit=min(240/(x1-x0),240/(y1-y0));ox=32;oy=24
     W=(x1-x0)*unit+64;H=(y1-y0)*unit+60
     rows=[f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}">',f'<rect width="{W}" height="{H}" fill="white"/>']
@@ -43,9 +43,9 @@ def map_svg(model,step,previous):
     if model.get('schema_version')=='1.1':
         # Measured footprints: draw each occupied cell, earlier pieces muted, new pieces in colour with their studs.
         fp=_footprints(model)
-        for id in previous:
-            for cx,cy in fp[id][0]:
-                rows.append(f'<rect x="{ox+(cx-x0)*unit+.5}" y="{oy+(y1-cy-1)*unit+.5}" width="{unit-1}" height="{unit-1}" fill="#edf0f2" stroke="#cbd3da" stroke-width=".5"/>')
+        previous_cells={cell for id in previous for cell in fp[id][0]}
+        for cx,cy in sorted(previous_cells):
+            rows.append(f'<rect x="{ox+(cx-x0)*unit+.5}" y="{oy+(y1-cy-1)*unit+.5}" width="{unit-1}" height="{unit-1}" fill="#edf0f2" stroke="#cbd3da" stroke-width=".5"/>')
         for item in placements(model,step):
             cells,studs=fp[item['instance']];p=by[item['instance']]
             for cx,cy in cells:
@@ -72,9 +72,10 @@ def map_svg(model,step,previous):
 
 def export_steps(model,out):
     by={p['id']:p for p in model['parts']};steps=[];previous=set();view='front-right'
+    model_bounds=bbox(model)
     for n,step in enumerate(model['steps'],1):
         view=step.get('view',view)
-        (out/f'instructions/map-{n:03}.svg').write_text(map_svg(model,step,previous))
+        (out/f'instructions/map-{n:03}.svg').write_text(map_svg(model,step,previous,model_bounds))
         steps.append(dict(number=n,title=step['title'],note=step.get('note',''),view=view,
                           image=f'step-{n:03}.png',map=f'map-{n:03}.svg',parts=inventory([by[id] for id in step['parts']]),
                           placements=placements(model,step)))
@@ -176,16 +177,17 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
             for i,line in enumerate(wrap(s['title'],805-title_x,20,'Bold')):text(title_x,546-i*25,line,20,'Bold')
             draw_image(str(out/'instructions'/s['image']),265,48,540,470,preserveAspectRatio=True,anchor='c',mask='auto')
             text(36,479,labels['parts_to_add'],9,'Bold',muted)
-            dense=len(s['parts'])>4;pitch=86 if dense else 112;icon_size=64 if dense else 80
+            dense=len(s['parts'])>4;pitch=100 if dense else 130;icon_size=52 if dense else 72
             for i,p in enumerate(s['parts']):
                 x=36+(i%2)*112;y=(402 if dense else 382)-(i//2)*pitch
                 draw_image(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y+10,icon_size,icon_size,mask='auto')
                 text(x+81,y+44,f'{p["quantity"]}x',13,'Bold')
-                text(x,y,part_name(p),9,'Bold')
-                text(x,y-13,p['part_id'],8,color=muted)
+                name_lines=wrap(part_name(p),104,7,'Bold')
+                for j,line in enumerate(name_lines):text(x,y-j*9,line,7,'Bold')
+                text(x,y-len(name_lines)*9-2,p['part_id'],7,color=muted)
             yy=112
             if n>1 and s['view']!=steps[n-2]['view']:
-                text(36,yy,labels['turn']+' / '+labels[s['view']].upper(),9,'Bold',blue);yy-=20
+                text(36,499,labels['turn']+' / '+labels[s['view']].upper(),8,'Bold',blue)
             if s['note']:
                 for line in wrap(s['note'],215,9):text(36,yy,line,9,color=muted);yy-=13
             if n==1:text(36,54,labels['new_edges'],8,color=blue)
@@ -198,9 +200,11 @@ def pdf(model,steps,report,out,style='studio',translation=None,fonts_override=No
                 x=36+(i%3)*258;y=388-(i//3)*112
                 draw_image(str(out/f'instructions/parts/{p["part_id"]}-{p["color_id"]}.png'),x,y,94,94,mask='auto')
                 text(x+108,y+61,f'{p["quantity"]}x',18,'Bold')
-                text(x+108,y+42,part_name(p),10,'Bold')
-                text(x+108,y+25,color_name(p),9,color=muted)
-                text(x+108,y+10,p['part_id'],8,color=muted)
+                name_lines=wrap(part_name(p),140,8,'Bold')
+                for j,line in enumerate(name_lines):text(x+108,y+42-j*10,line,8,'Bold')
+                label_y=y+42-len(name_lines)*10-4
+                text(x+108,label_y,color_name(p),8,color=muted)
+                text(x+108,label_y-12,p['part_id'],8,color=muted)
             footer(page);page+=1;c.showPage()
         c.save();return
     title_x=max(106,34+pdfmetrics.stringWidth(f'{len(steps):02}','Bold',34)+20)

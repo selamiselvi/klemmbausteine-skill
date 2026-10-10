@@ -8,7 +8,7 @@ LABELS = {
     'digital_status': 'Digitally checked · not physically test-built',
     'parts_to_add': 'PARTS TO ADD', 'turn': 'TURN',
     'new_edges': 'Blue edges: parts added in this step', 'inventory': 'Parts inventory',
-    'availability': 'LDraw IDs / color availability not checked', 'front': 'FRONT',
+    'availability': 'LDraw IDs / market availability not checked', 'front': 'FRONT',
     'front-right': 'front right', 'front-left': 'front left',
     'back-right': 'back right', 'back-left': 'back left',
 }
